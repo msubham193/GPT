@@ -11,7 +11,7 @@ import {
   History,
   Copy,
   Trash2,
-  Pencil, // Added Pencil icon for edit
+  Pencil,
   ChevronDown,
 } from "lucide-react";
 import Image from "next/image";
@@ -70,6 +70,10 @@ function App() {
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [showHistorySidebar, setShowHistorySidebar] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -80,7 +84,6 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
-  // Load login state and chat history on mount
   useEffect(() => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const savedUser = localStorage.getItem("currentUser");
@@ -94,7 +97,6 @@ function App() {
     }
   }, []);
 
-  // Save chat history to localStorage whenever it changes
   useEffect(() => {
     if (isLoggedIn && currentUser) {
       localStorage.setItem(
@@ -315,12 +317,25 @@ function App() {
   };
 
   const handleDeleteHistory = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this chat history?")) {
-      setChatHistory((prev) => prev.filter((item) => item.id !== id));
-      toast.success("Chat history deleted!", {
-        position: "bottom-center",
-      });
-    }
+    setShowDeleteConfirm(id);
+  };
+
+  const confirmDeleteHistory = (id: string) => {
+    setIsDeleting(id);
+    setChatHistory((prev) => {
+      const newHistory = prev.filter((item) => item.id !== id);
+      return newHistory;
+    });
+    setShowDeleteConfirm(null);
+    setIsDeleting(null);
+    toast.success("Chat history deleted!", {
+      position: "bottom-center",
+      duration: 2000,
+    });
+  };
+
+  const cancelDeleteHistory = () => {
+    setShowDeleteConfirm(null);
   };
 
   const copyToClipboard = (text: string) => {
@@ -329,6 +344,7 @@ function App() {
       .then(() => {
         toast.success("Message copied to clipboard!", {
           position: "bottom-center",
+          duration: 2000,
         });
       })
       .catch((err) => {
@@ -500,32 +516,51 @@ function App() {
             {chatHistory.length === 0 ? (
               <p className="text-sm text-gray-500">No chat history yet.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {chatHistory.map((item) => (
                   <div
                     key={item.id}
-                    className="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200"
+                    className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-between"
                   >
-                    <div className="flex justify-between items-start">
-                      <div
-                        className="cursor-pointer flex-1"
-                        onClick={() => handleHistoryClick(item)}
-                      >
-                        <p className="text-xs font-medium text-gray-900 truncate">
-                          {item.query}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {item.timestamp}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteHistory(item.id)}
-                        className="text-red-500 hover:text-red-700 transition-colors"
-                        title="Delete chat"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div
+                      className="cursor-pointer flex-1 max-w-[80%]"
+                      onClick={() => handleHistoryClick(item)}
+                    >
+                      <p className="text-xs font-medium text-gray-900 truncate">
+                        {item.query}
+                      </p>
+                      <p className="text-xs text-gray-500">{item.timestamp}</p>
                     </div>
+                    <button
+                      onClick={() => handleDeleteHistory(item.id)}
+                      className="text-red-500 hover:text-red-700 transition-colors p-1"
+                      title="Delete chat"
+                      disabled={isDeleting === item.id}
+                    >
+                      {isDeleting === item.id ? (
+                        <svg
+                          className="w-4 h-4 animate-spin text-red-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z"
+                          />
+                        </svg>
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -534,11 +569,11 @@ function App() {
         )}
 
         {/* Main Chat Interface */}
-        <div className="flex flex-col flex-1 max-w-4xl mx-auto p-2 sm:p-4 w-full">
-          <div className="flex-1 overflow-y-auto mb-4 space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 min-h-[60vh]">
+        <div className="flex flex-col flex-1.5 max-w-4xl mx-auto p-2 sm:p-4 w-full">
+          <div className="flex-1 overflow-y-auto mb-2 space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 min-h-[60vh]">
             {messages.length === 0 && (
-              <div className="text-center mt-4 sm:mt-20 animate-fadeIn w-full px-2">
-                <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-4 custom-gradient-shadow">
+              <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
+              <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow">
                   <Image
                     src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
                     alt="CIME Logo"
@@ -547,7 +582,7 @@ function App() {
                     className="w-8 h-8 sm:w-12 sm:h-12"
                   />
                 </div>
-                <h2 className="text-lg sm:text-2xl font-bold mb-2 sm:mb-4 bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent px-2">
+                <h2 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent px-2">
                   Welcome to College of IT & Management Education Bhubaneswar
                   GPT
                 </h2>
@@ -601,17 +636,17 @@ function App() {
                       </div>
                       <button
                         onClick={() => copyToClipboard(message.content)}
-                        className="text-slate-200 hover:text-gray-700 transition-colors"
+                        className="text-black hover:text-gray-700 transition-colors"
                         title="Copy message"
                       >
-                        <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                       <button
                         onClick={() => handleEditMessage(message.content)}
-                        className="text-slate-200 hover:text-gray-700 transition-colors"
+                        className="text-black hover:text-gray-700 transition-colors"
                         title="Edit message"
                       >
-                        <Pencil className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <Pencil className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                     </div>
                   )}
@@ -667,7 +702,7 @@ function App() {
 
           {/* Sample Queries */}
           {messages.length === 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mb-6 w-full px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-2 sm:mt-3 mb-4 w-full px-2">
               {sampleQueries.map((query, index) => (
                 <ShineBorder
                   className="text-xs sm:text-sm relative flex h-[80%] w-full flex-col items-center justify-center overflow-hidden backdrop-blur-md border md:shadow-xl bg-white/80 text-gray-900 hover:bg-gray-50/80 transition-all duration-300 text-left hover:shadow-lg hover:shadow-blue-400/20 group rounded-lg"
@@ -709,6 +744,34 @@ function App() {
           </form>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-xs sm:max-w-md">
+            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">
+              Confirm Deletion
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-700 mb-4 sm:mb-6">
+              Are you sure you want to delete this chat history?
+            </p>
+            <div className="flex justify-end gap-2 sm:gap-3">
+              <button
+                onClick={cancelDeleteHistory}
+                className="px-2 sm:px-4 py-1 sm:py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-all duration-300 text-xs sm:text-base"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmDeleteHistory(showDeleteConfirm)}
+                className="px-2 sm:px-4 py-1 sm:py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-300 text-xs sm:text-base"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Login Modal */}
       {showLoginModal && (

@@ -89,10 +89,10 @@ const AdminDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-// Handle mobile menu tab selection
+  // Handle mobile menu tab selection
   const handleMobileTabSelect = (tab: "upload" | "analytics") => {
     setActiveTab(tab);
-    setMobileMenuOpen(false); // Close menu after selection
+    setMobileMenuOpen(false);
   };
 
   // Fetch PDF documents with retry logic
@@ -115,6 +115,7 @@ const AdminDashboard = () => {
           uploadDate: new Date().toISOString().slice(0, 16).replace("T", " "),
           size: undefined,
         }));
+        console.log("Fetched documents:", files); // Debug
         setPdfFiles(files);
         setError(null);
         return;
@@ -147,7 +148,7 @@ const AdminDashboard = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      console.log("Starting upload for files:", files.length); // Debug
+      console.log("Starting upload for files:", files.length);
       setIsUploading(true);
       setError(null);
       for (const file of Array.from(files)) {
@@ -156,7 +157,6 @@ const AdminDashboard = () => {
         formData.append("document_name", file.name);
 
         try {
-          // Upload PDF
           const uploadResponse = await fetch("/api/upload-pdf", {
             method: "POST",
             body: formData,
@@ -167,7 +167,6 @@ const AdminDashboard = () => {
             );
           }
           const uploadData = await uploadResponse.json();
-          // Rebuild index
           const rebuildResponse = await fetch("/api/rebuild-index", {
             method: "POST",
           });
@@ -176,9 +175,7 @@ const AdminDashboard = () => {
               `Failed to rebuild index: ${rebuildResponse.statusText}`
             );
           }
-          // Refresh document list
           await fetchDocuments();
-          // Log activities
           const timestamp = new Date()
             .toISOString()
             .slice(0, 16)
@@ -204,19 +201,25 @@ const AdminDashboard = () => {
   };
 
   const handleDeletePdf = async (id: string) => {
-    console.log("Deleting document:", id); // Debug
+    console.log("Deleting document:", id);
     setShowConfirmDeleteModal(null);
     setDeletingId(id);
     try {
-      const response = await fetch(`/api/documents/${id}`, {
+      const response = await fetch(`/api/documents/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
       if (!response.ok) {
-        throw new Error(`Failed to delete document: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 404) {
+          throw new Error(`Document "${id}" not found on the server.`);
+        }
+        throw new Error(
+          errorData.error || `Failed to delete document: ${response.statusText}`
+        );
       }
-      // Refresh document list
+      const data = await response.json();
+      console.log("Delete response:", data); // Debug
       await fetchDocuments();
-      // Log delete activity
       const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
       setUserActivities((prev) => [
         ...prev,
@@ -225,7 +228,11 @@ const AdminDashboard = () => {
       setShowSuccessModal(`Document "${id}" deleted successfully.`);
     } catch (err) {
       console.error("Error deleting document:", err);
-      setShowErrorModal(`Failed to delete document "${id}". Please try again.`);
+      const errorMessage =
+        err instanceof Error && err.message.includes("not found")
+          ? err.message
+          : `Failed to delete document "${id}". Please try again later.`;
+      setShowErrorModal(errorMessage);
     } finally {
       setDeletingId(null);
     }
@@ -235,11 +242,9 @@ const AdminDashboard = () => {
     fileInputRef.current?.click();
   };
 
-  // Function to open PDF in a new tab
   const handleOpenPdf = async (id: string) => {
-    const pdfUrl = `/api/documents/${id}`;
+    const pdfUrl = `/api/documents/${encodeURIComponent(id)}`;
     try {
-      // Optional: Check if PDF exists before opening
       const response = await fetch(pdfUrl, { method: "HEAD" });
       if (!response.ok) {
         throw new Error("PDF not found");
@@ -250,7 +255,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Calculate dashboard metrics
   const totalVisitors = userVisits.reduce(
     (sum, user) => sum + user.visitCount,
     0
@@ -601,9 +605,13 @@ const AdminDashboard = () => {
                                 Action:{" "}
                               </span>
                               <button
-                                onClick={() =>
-                                  setShowConfirmDeleteModal(file.id)
-                                }
+                                onClick={() => {
+                                  console.log(
+                                    "Trash icon clicked for ID:",
+                                    file.id
+                                  );
+                                  setShowConfirmDeleteModal(file.id);
+                                }}
                                 disabled={deletingId === file.id}
                                 className="text-red-500 hover:text-red-700 disabled:opacity-50"
                               >
@@ -793,7 +801,7 @@ const AdminDashboard = () => {
         {/* Error Modal */}
         {showErrorModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 w-full max-w-xs sm:max-w-md animate-slide">
+            <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 w-full max-w-xs sm:max-w-md animate-slide-up">
               <h3 className="text-base sm:text-xl font-semibold text-red-600 mb-3 sm:mb-4">
                 Error
               </h3>
@@ -819,7 +827,9 @@ const AdminDashboard = () => {
               </h3>
               <p className="text-xs sm:text-base text-gray-600 mb-4 sm:mb-6">
                 Are you sure you want to delete document "
-                {showConfirmDeleteModal}"?
+                {pdfFiles.find((file) => file.id === showConfirmDeleteModal)
+                  ?.name || showConfirmDeleteModal}
+                "?
               </p>
               <div className="flex flex-col sm:flex-row justify-end gap-3">
                 <button
@@ -829,7 +839,13 @@ const AdminDashboard = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleDeletePdf(showConfirmDeleteModal)}
+                  onClick={() => {
+                    console.log(
+                      "Delete confirmed for ID:",
+                      showConfirmDeleteModal
+                    );
+                    handleDeletePdf(showConfirmDeleteModal);
+                  }}
                   className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-300 text-sm shadow-md"
                 >
                   Delete
