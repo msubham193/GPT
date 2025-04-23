@@ -6,13 +6,13 @@ import {
   User,
   Sparkles,
   LogIn,
-  LogOut,
   UserPlus,
   History,
   Copy,
   Trash2,
   Pencil,
   ChevronDown,
+  AlignJustify,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import ShineBorder from "./ui/shine-border";
 import toast, { Toaster } from "react-hot-toast";
 
+// Define interfaces for type safety
 interface Message {
   type: "user" | "bot";
   content: string;
@@ -45,6 +46,7 @@ interface ChatHistoryItem {
   timestamp: string;
 }
 
+// Sample queries for the initial screen
 const sampleQueries = [
   "What is the history of CIME?",
   "Who are the key faculty members at CIME?",
@@ -76,6 +78,7 @@ function App() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Scroll to the bottom of the chat when new messages are added
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -84,6 +87,7 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
+  // Load login state and chat history from localStorage on mount
   useEffect(() => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const savedUser = localStorage.getItem("currentUser");
@@ -97,6 +101,7 @@ function App() {
     }
   }, []);
 
+  // Save chat history to localStorage when it changes
   useEffect(() => {
     if (isLoggedIn && currentUser) {
       localStorage.setItem(
@@ -106,6 +111,7 @@ function App() {
     }
   }, [chatHistory, currentUser, isLoggedIn]);
 
+  // Handle form submission to send a chat message
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -176,10 +182,12 @@ function App() {
     }
   };
 
+  // Handle sample query clicks
   const handleSampleQuery = (query: string) => {
     setInput(query);
   };
 
+  // Handle user login
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -209,6 +217,7 @@ function App() {
     }
   };
 
+  // Handle user registration
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -266,6 +275,7 @@ function App() {
     setError(null);
   };
 
+  // Check user credentials for login
   const checkUserCredentials = (email: string, password: string): boolean => {
     const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
     return users.some(
@@ -274,11 +284,13 @@ function App() {
     );
   };
 
+  // Validate email format
   const validateEmail = (email: string): boolean => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
 
+  // Handle user logout
   const handleLogout = () => {
     setIsLoggedIn(false);
     setCurrentUser("");
@@ -288,26 +300,31 @@ function App() {
     localStorage.removeItem("currentUser");
   };
 
+  // Toggle context visibility for bot messages
   const toggleContext = (index: number) => {
     setShowContext(showContext === index ? null : index);
   };
 
+  // Switch to registration modal
   const switchToRegister = () => {
     setShowLoginModal(false);
     setShowRegisterModal(true);
     setError(null);
   };
 
+  // Switch to login modal
   const switchToLogin = () => {
     setShowRegisterModal(false);
     setShowLoginModal(true);
     setError(null);
   };
 
+  // Toggle history sidebar visibility
   const toggleHistorySidebar = () => {
     setShowHistorySidebar(!showHistorySidebar);
   };
 
+  // Handle clicking on a chat history item
   const handleHistoryClick = (item: ChatHistoryItem) => {
     setMessages([
       { type: "user", content: item.query },
@@ -316,10 +333,12 @@ function App() {
     setInput("");
   };
 
+  // Initiate chat history deletion
   const handleDeleteHistory = (id: string) => {
     setShowDeleteConfirm(id);
   };
 
+  // Confirm chat history deletion
   const confirmDeleteHistory = (id: string) => {
     setIsDeleting(id);
     setChatHistory((prev) => {
@@ -334,10 +353,12 @@ function App() {
     });
   };
 
+  // Cancel chat history deletion
   const cancelDeleteHistory = () => {
     setShowDeleteConfirm(null);
   };
 
+  // Copy message to clipboard
   const copyToClipboard = (text: string) => {
     navigator.clipboard
       .writeText(text)
@@ -355,10 +376,12 @@ function App() {
       });
   };
 
+  // Edit a message by setting it as the input
   const handleEditMessage = (content: string) => {
     setInput(content);
   };
 
+  // Format text for rendering (e.g., Markdown-like formatting)
   const formatText = (text: string) => {
     let formattedText = text.replace(/^[\s]*[-*][\s]+(.+)$/gm, "<li>$1</li>");
     formattedText = formattedText.replace(/<\/li>\n<li>/g, "</li><li>");
@@ -405,8 +428,20 @@ function App() {
       {/* Header */}
       <div className="backdrop-blur-md bg-white border-gray-200 p-2 sm:p-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-1 sm:gap-2 px-2 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-1 sm:gap-2">
-            <div className="custom-gradient-shadow rounded-full p-1 sm:p-2">
+          <div className="flex items-center gap-1 sm:gap-4">
+            {isLoggedIn && (
+              <button
+                onClick={toggleHistorySidebar}
+                className="flex items-center gap-1 sm:gap-2 bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 sm:px-2 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
+              >
+                <AlignJustify className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">History</span>
+              </button>
+            )}
+            <div
+              className="custom-gradient-shadow rounded-full p-1 sm:p-2"
+              onClick={() => setShowLoginModal(true)}
+            >
               <Image
                 src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
                 alt="CIME Logo"
@@ -420,24 +455,13 @@ function App() {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {isLoggedIn && (
-              <button
-                onClick={toggleHistorySidebar}
-                className="flex items-center gap-1 sm:gap-2 bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
-              >
-                <History className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">History</span>
-              </button>
-            )}
             {isLoggedIn ? (
               <div className="relative">
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center gap-1 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
+                  className="flex items-center gap-1 sm:gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2  transition-all duration-300 text-xs sm:text-base"
                 >
-                  <User className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden xs:inline">{currentUser}</span>
-                  <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
+                  {currentUser.slice(0, 1).toUpperCase()}
                 </button>
                 {showProfileDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 z-20">
@@ -458,6 +482,18 @@ function App() {
                     >
                       Sign Out
                     </button>
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Settings
+                    </button>
+                    <Link
+                      href="/pro"
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Upgrade to Pro
+                    </Link>
                   </div>
                 )}
               </div>
@@ -470,13 +506,13 @@ function App() {
                   <UserPlus className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden xs:inline">Register</span>
                 </button>
-                <button
+                {/* <button
                   onClick={() => setShowLoginModal(true)}
                   className="flex items-center gap-1 sm:gap-2 bg-black hover:bg-gray-800 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
                 >
                   <LogIn className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden xs:inline">Login</span>
-                </button>
+                </button> */}
               </div>
             )}
           </div>
@@ -569,11 +605,11 @@ function App() {
         )}
 
         {/* Main Chat Interface */}
-        <div className="flex flex-col flex-1.5 max-w-4xl mx-auto p-2 sm:p-4 w-full">
-          <div className="flex-1 overflow-y-auto mb-2 space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 min-h-[60vh]">
+        <div className="flex flex-col max-w-4xl mx-auto p-2 sm:p-4 w-full">
+          <div className="flex-1  mb-2 space-y-3 sm:space-y-4  min-h-[40vh]">
             {messages.length === 0 && (
-              <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
-              <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow">
+              <div className="text-center mt-4 mb-3  sm:mb-4 animate-fadeIn w-full px-2">
+                <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow">
                   <Image
                     src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
                     alt="CIME Logo"
@@ -586,15 +622,6 @@ function App() {
                   Welcome to College of IT & Management Education Bhubaneswar
                   GPT
                 </h2>
-                <AnimatedGradientText>
-                  <span
-                    className={cn(
-                      `inline animate-gradient bg-gradient-to-r from-gray-900 via-gray-600 to-gray-400 bg-[length:var(--bg-size)_100%] bg-clip-text text-transparent text-sm sm:text-base`
-                    )}
-                  >
-                    Ask me anything about CIME
-                  </span>
-                </AnimatedGradientText>
               </div>
             )}
             {messages.map((message, index) => (
@@ -818,15 +845,7 @@ function App() {
                   {error}
                 </div>
               )}
-              <div className="flex justify-between items-center mb-4">
-                <button
-                  type="button"
-                  onClick={switchToRegister}
-                  className="text-blue-500 hover:text-blue-700 text-xs sm:text-sm"
-                >
-                  Don't have an account? Register
-                </button>
-              </div>
+              <div className="flex justify-between items-center mb-4"></div>
               <div className="flex justify-end gap-2 sm:gap-3">
                 <button
                   type="button"
