@@ -506,13 +506,6 @@ function App() {
                   <UserPlus className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden xs:inline">Register</span>
                 </button>
-                {/* <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="flex items-center gap-1 sm:gap-2 bg-black hover:bg-gray-800 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
-                >
-                  <LogIn className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden xs:inline">Login</span>
-                </button> */}
               </div>
             )}
           </div>
@@ -605,10 +598,10 @@ function App() {
         )}
 
         {/* Main Chat Interface */}
-        <div className="flex flex-col max-w-4xl mx-auto p-2 sm:p-4 w-full">
-          <div className="flex-1  mb-2 space-y-3 sm:space-y-4  min-h-[40vh]">
+        <div className="flex flex-col flex-1.5 max-w-4xl mx-auto p-2 sm:p-4 w-full">
+          <div className="flex-1 overflow-y-auto mb-2 space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 min-h-[60vh]">
             {messages.length === 0 && (
-              <div className="text-center mt-4 mb-3  sm:mb-4 animate-fadeIn w-full px-2">
+              <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
                 <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow">
                   <Image
                     src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
@@ -627,7 +620,7 @@ function App() {
             {messages.map((message, index) => (
               <div
                 key={index}
-                className={`flex items-start gap-2 sm:gap-4 relative ${
+                className={`flex mt-10 items-start gap-2 sm:gap-4 relative ${
                   message.type === "user" ? "justify-end" : ""
                 } animate-fadeIn w-full`}
               >
@@ -642,63 +635,77 @@ function App() {
                     />
                   </div>
                 )}
-                <div
-                  className={`max-w-[85%] sm:max-w-[70%] p-2 sm:p-3 rounded-lg backdrop-blur-md shadow-lg ${
-                    message.type === "user"
-                      ? "bg-blue-500/80 shadow-blue-400/20 text-white"
-                      : "bg-gray-100/80 shadow-gray-200/20 text-gray-900"
-                  }`}
-                >
-                  {message.type === "bot" ? (
-                    <div
-                      className="markdown-content text-xs sm:text-sm"
-                      dangerouslySetInnerHTML={{
-                        __html: formatText(message.content),
-                      }}
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col items-start">
+                  <div
+                    className={`max-w-[85%] sm:max-w-[70%] p-2 sm:p-3 rounded-lg backdrop-blur-md shadow-lg ${
+                      message.type === "user"
+                        ? "bg-blue-500/80 shadow-blue-400/20 text-white"
+                        : "bg-gray-100/80 shadow-gray-200/20 text-gray-900"
+                    }`}
+                  >
+                    {message.type === "bot" ? (
+                      <div
+                        className="markdown-content text-xs sm:text-sm"
+                        dangerouslySetInnerHTML={{
+                          __html: formatText(message.content),
+                        }}
+                      />
+                    ) : (
                       <div className="text-xs sm:text-sm">
                         {message.content}
                       </div>
+                    )}
+                    {message.type === "bot" && message.context && (
+                      <div>
+                        <button
+                          onClick={() => toggleContext(index)}
+                          className="text-xs text-gray-500 mt-1 sm:mt-2 hover:text-gray-700"
+                        >
+                          {showContext === index
+                            ? "Hide context"
+                            : "Show context"}
+                        </button>
+                        {showContext === index && (
+                          <div className="mt-1 sm:mt-2 text-xs text-gray-600 border-t border-gray-200 pt-1 sm:pt-2">
+                            <h4 className="font-medium mb-1">Sources:</h4>
+                            <ul className="list-disc pl-4 text-xs">
+                              {message.context.map((source, i) => (
+                                <li key={i}>{source}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    {message.type === "user" ? (
+                      <>
+                        <button
+                          onClick={() => copyToClipboard(message.content)}
+                          className="text-slate-600 hover:text-gray-700 transition-colors"
+                          title="Copy message"
+                        >
+                          <Copy className="w-4 h-4 sm:w-4 sm:h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditMessage(message.content)}
+                          className="text-slate-600 hover:text-gray-700 transition-colors"
+                          title="Edit message"
+                        >
+                          <Pencil className="w-4 h-4 sm:w-4 sm:h-4" />
+                        </button>
+                      </>
+                    ) : (
                       <button
                         onClick={() => copyToClipboard(message.content)}
-                        className="text-black hover:text-gray-700 transition-colors"
+                        className="text-slate-600 hover:text-gray-700 transition-colors"
                         title="Copy message"
                       >
-                        <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <Copy className="w-4 h-4 sm:w-4 sm:h-4" />
                       </button>
-                      <button
-                        onClick={() => handleEditMessage(message.content)}
-                        className="text-black hover:text-gray-700 transition-colors"
-                        title="Edit message"
-                      >
-                        <Pencil className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </button>
-                    </div>
-                  )}
-                  {message.type === "bot" && message.context && (
-                    <div>
-                      <button
-                        onClick={() => toggleContext(index)}
-                        className="text-xs text-gray-500 mt-1 sm:mt-2 hover:text-gray-700"
-                      >
-                        {showContext === index
-                          ? "Hide context"
-                          : "Show context"}
-                      </button>
-                      {showContext === index && (
-                        <div className="mt-1 sm:mt-2 text-xs text-gray-600 border-t border-gray-200 pt-1 sm:pt-2">
-                          <h4 className="font-medium mb-1">Sources:</h4>
-                          <ul className="list-disc pl-4 text-xs">
-                            {message.context.map((source, i) => (
-                              <li key={i}>{source}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 {message.type === "user" && (
                   <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-400/20 flex-shrink-0">
