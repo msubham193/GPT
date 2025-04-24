@@ -280,12 +280,17 @@ const AdminDashboard = () => {
             prevFiles.filter((f) => f.id !== optimisticId)
           );
 
-          const newActivities = [
+          const newActivities: UserActivity[] = [
             ...userActivities,
-            { email: "admin@cime.ac.in", action: "upload", timestamp },
-            { email: "admin@cime.ac.in", action: "rebuild", timestamp },
+            { email: "admin@cime.ac.in", action: "upload" as const, timestamp },
+            { email: "admin@cime.ac.in", action: "rebuild" as const, timestamp },
           ];
-          setUserActivities(newActivities);
+          setUserActivities(
+            newActivities.map((activity) => ({
+              ...activity,
+              action: activity.action as "upload" | "rebuild" | "delete" | "login" | "query",
+            }))
+          );
           localStorage.setItem("userActivities", JSON.stringify(newActivities));
           setShowSuccessModal(`PDF "${file.name}" uploaded successfully.`);
         } catch (err) {
@@ -323,7 +328,12 @@ const AdminDashboard = () => {
       ...userActivities,
       { email: "admin@cime.ac.in", action: "delete", timestamp },
     ];
-    setUserActivities(newActivities);
+    setUserActivities(
+      newActivities.map((activity) => ({
+        ...activity,
+        action: activity.action as "upload" | "rebuild" | "login" | "query" | "delete",
+      }))
+    );
     localStorage.setItem("userActivities", JSON.stringify(newActivities));
 
     // Show success message
