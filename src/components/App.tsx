@@ -13,6 +13,8 @@ import {
   Pencil,
   ChevronDown,
   AlignJustify,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -98,6 +100,8 @@ function App() {
       if (savedHistory) {
         setChatHistory(JSON.parse(savedHistory));
       }
+    } else {
+      setShowLoginModal(true); // Show login modal if not logged in on app load
     }
   }, []);
 
@@ -151,7 +155,7 @@ function App() {
           id: crypto.randomUUID(),
           query: userQuery,
           response: data.answer,
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+          timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
         };
         setChatHistory((prev) => [newHistoryItem, ...prev]);
       }
@@ -162,7 +166,7 @@ function App() {
           {
             email: currentUser || "admin@cime.ac.in",
             action: "query",
-            timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+            timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
           },
         ]);
       }
@@ -208,10 +212,16 @@ function App() {
         {
           email,
           action: "login",
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+          timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
         },
       ]);
-      setError(null);
+      toast.success("Login successful!", {
+        position: "bottom-center",
+        duration: 2000,
+      });
+      if (email === "admin@cime.ac.in") {
+        window.location.href = "/admin"; // Redirect to admin dashboard if admin
+      }
     } else {
       setError("Invalid credentials. Please try again.");
     }
@@ -258,7 +268,7 @@ function App() {
       {
         email,
         action: "register",
-        timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+        timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
       },
     ]);
 
@@ -298,6 +308,11 @@ function App() {
     setShowProfileDropdown(false);
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("currentUser");
+    setShowLoginModal(true); // Show login modal after logout
+    toast.success("Signed out successfully!", {
+      position: "bottom-center",
+      duration: 2000,
+    });
   };
 
   // Toggle context visibility for bot messages
@@ -319,9 +334,9 @@ function App() {
     setError(null);
   };
 
-  // Toggle history sidebar visibility
+  // Toggle history sidebar visibility on click
   const toggleHistorySidebar = () => {
-    setShowHistorySidebar(!showHistorySidebar);
+    if (isLoggedIn) setShowHistorySidebar(!showHistorySidebar);
   };
 
   // Handle clicking on a chat history item
@@ -422,6 +437,34 @@ function App() {
     return formattedText;
   };
 
+  // Get formatted date and time for history with seconds
+  const getFormattedTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    const isToday =
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear();
+    const isYesterday =
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear();
+
+    const time = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+
+    if (isToday) return `Today at ${time}`;
+    if (isYesterday) return `Yesterday at ${time}`;
+    return `${date.toLocaleDateString()} at ${time}`;
+  };
+
   return (
     <div className="min-h-screen bg-white text-gray-900 font-poppins flex flex-col">
       <Toaster />
@@ -459,39 +502,44 @@ function App() {
               <div className="relative">
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center gap-1 sm:gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2  transition-all duration-300 text-xs sm:text-base"
+                  className="flex items-center gap-1 sm:gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2 transition-all duration-300 text-xs sm:text-base"
                 >
                   {currentUser.slice(0, 1).toUpperCase()}
                 </button>
                 {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 z-20">
-                    <div className="px-4 py-2 text-xs sm:text-sm text-gray-700 border-b border-gray-200">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 z-20">
+                    <div className="px-4 py-2 text-xs sm:text-sm text-gray-700 border-b border-gray-200 flex items-center gap-2">
+                      <User className="w-4 h-4" />
                       {currentUser}
                     </div>
                     {currentUser === "admin@cime.ac.in" && (
                       <Link
                         href="/admin"
-                        className="block px-4 py-2 text-xs sm:text-sm text-blue-500 hover:bg-gray-100"
+                        className="block px-4 py-2 text-xs sm:text-sm text-blue-500 hover:bg-gray-100 flex items-center gap-2"
                       >
+                        <User className="w-4 h-4" />
                         Admin Dashboard
                       </Link>
                     )}
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
+                      <LogOut className="w-4 h-4" />
                       Sign Out
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
+                      <Settings className="w-4 h-4" />
                       Settings
                     </button>
                     <Link
                       href="/pro"
-                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
+                      <UserPlus className="w-4 h-4" />
                       Upgrade to Pro
                     </Link>
                   </div>
@@ -499,6 +547,19 @@ function App() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowLoginModal(true);
+                    toast.success("Login process initiated!", {
+                      position: "bottom-center",
+                      duration: 2000,
+                    });
+                  }}
+                  className="flex items-center gap-1 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
+                >
+                  <LogIn className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden xs:inline">Login</span>
+                </button>
                 <button
                   onClick={() => setShowRegisterModal(true)}
                   className="flex items-center gap-1 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
@@ -524,7 +585,7 @@ function App() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-900">Chat History</h2>
               <button
-                onClick={toggleHistorySidebar}
+                onClick={() => setShowHistorySidebar(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <svg
@@ -558,7 +619,9 @@ function App() {
                       <p className="text-xs font-medium text-gray-900 truncate">
                         {item.query}
                       </p>
-                      <p className="text-xs text-gray-500">{item.timestamp}</p>
+                      <p className="text-xs text-gray-500">
+                        {getFormattedTime(item.timestamp)}
+                      </p>
                     </div>
                     <button
                       onClick={() => handleDeleteHistory(item.id)}
@@ -599,7 +662,11 @@ function App() {
 
         {/* Main Chat Interface */}
         <div className="flex flex-col flex-1.5 max-w-4xl mx-auto p-2 sm:p-4 w-full">
-          <div className="flex-1 overflow-y-auto mb-2 space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 min-h-[60vh]">
+          <div
+            className={`flex-1 mb-2 space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 ${
+              messages.length === 0 ? "" : "overflow-y-auto"
+            } min-h-[40vh]`}
+          >
             {messages.length === 0 && (
               <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
                 <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow">
@@ -637,7 +704,7 @@ function App() {
                 )}
                 <div className="flex flex-col items-start">
                   <div
-                    className={`max-w-[85%] sm:max-w-[70%] p-2 sm:p-3 rounded-lg backdrop-blur-md shadow-lg ${
+                    className={`max-w-[100%] sm:max-w-[100%] p-2 sm:p-3 rounded-lg backdrop-blur-md shadow-lg ${
                       message.type === "user"
                         ? "bg-blue-500/80 shadow-blue-400/20 text-white"
                         : "bg-gray-100/80 shadow-gray-200/20 text-gray-900"
@@ -809,7 +876,7 @@ function App() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
           <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
             <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">
               Login
@@ -875,7 +942,7 @@ function App() {
 
       {/* Registration Modal */}
       {showRegisterModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
           <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
             <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">
               Create an Account
