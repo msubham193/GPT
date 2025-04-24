@@ -398,42 +398,81 @@ function App() {
 
   // Format text for rendering (e.g., Markdown-like formatting)
   const formatText = (text: string) => {
+    // First, handle bullet point lists
     let formattedText = text.replace(/^[\s]*[-*][\s]+(.+)$/gm, "<li>$1</li>");
     formattedText = formattedText.replace(/<\/li>\n<li>/g, "</li><li>");
-    formattedText = formattedText.replace(
-      /<li>(.+?)(<\/li>)+/gs,
-      "<ul>$&</ul>"
-    );
+
+    // Group bullet lists within <ul> tags
+    const bulletListRegex = /(<li>.+?<\/li>)+/gs;
+    let match;
+    while ((match = bulletListRegex.exec(formattedText)) !== null) {
+      // Only wrap in <ul> if not already wrapped
+      if (
+        !/^<[ou]l>/.test(match[0]) &&
+        !/^<[ou]l>/.test(
+          formattedText.substring(Math.max(0, match.index - 4), match.index)
+        )
+      ) {
+        formattedText = formattedText.replace(match[0], `<ul>${match[0]}</ul>`);
+      }
+    }
+
+    // Handle numbered lists - preserve the original numbers
     formattedText = formattedText.replace(
       /^[\s]*(\d+)\.[\s]+(.+)$/gm,
-      "<li>$2</li>"
+      (match, number, content) => {
+        return `<li value="${number}">${content}</li>`;
+      }
     );
-    formattedText = formattedText.replace(
-      /<li>(.+?)(<\/li>)+/gs,
-      "<ol>$&</ol>"
-    );
+
+    // Group numbered lists within <ol> tags
+    const numberedListRegex = /(<li value="\d+">.+?<\/li>)+/gs;
+    while ((match = numberedListRegex.exec(formattedText)) !== null) {
+      // Only wrap in <ol> if not already wrapped
+      if (
+        !/^<[ou]l>/.test(match[0]) &&
+        !/^<[ou]l>/.test(
+          formattedText.substring(Math.max(0, match.index - 4), match.index)
+        )
+      ) {
+        formattedText = formattedText.replace(match[0], `<ol>${match[0]}</ol>`);
+      }
+    }
+
+    // Clean up nested lists
     formattedText = formattedText.replace(/<ul><ul>/g, "<ul>");
     formattedText = formattedText.replace(/<\/ul><\/ul>/g, "</ul>");
     formattedText = formattedText.replace(/<ol><ol>/g, "<ol>");
     formattedText = formattedText.replace(/<\/ol><\/ol>/g, "</ol>");
+
+    // Handle text formatting
     formattedText = formattedText.replace(
       /\*\*(.*?)\*\*/g,
       "<strong>$1</strong>"
     );
     formattedText = formattedText.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+    // Handle headings
     formattedText = formattedText.replace(/^# (.*?)$/gm, "<h2>$1</h2>");
     formattedText = formattedText.replace(/^## (.*?)$/gm, "<h3>$1</h3>");
     formattedText = formattedText.replace(/^### (.*?)$/gm, "<h4>$1</h4>");
+
+    // Handle links
     formattedText = formattedText.replace(
       /\[(.*?)\]\((.*?)\)/g,
       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
+
+    // Handle code blocks
     formattedText = formattedText.replace(
       /```([^`]+)```/g,
       "<pre><code>$1</code></pre>"
     );
     formattedText = formattedText.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+    // Handle line breaks
     formattedText = formattedText.replace(/([^>])\n([^<])/g, "$1<br />$2");
+
     return formattedText;
   };
 
