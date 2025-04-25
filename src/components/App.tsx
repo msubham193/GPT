@@ -101,7 +101,7 @@ function App() {
         setChatHistory(JSON.parse(savedHistory));
       }
     } else {
-      setShowRegisterModal(true) // Show login modal if not logged in on app load
+      setShowRegisterModal(true); // Show login modal if not logged in on app load
     }
   }, []);
 
@@ -1069,13 +1069,6 @@ function App() {
                 </button>
               </div>
               <div className="flex justify-end gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowRegisterModal(false)}
-                  className="px-2 sm:px-4 py-1 sm:py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-all duration-300 text-xs sm:text-base"
-                >
-                  Cancel
-                </button>
                 <button
                   type="submit"
                   className="px-2 sm:px-4 py-1 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all duration-300 text-xs sm:text-base"
