@@ -521,14 +521,14 @@ function App() {
               </button>
             )}
             <div
-              className="custom-gradient-shadow rounded-full p-1 sm:p-2"
+              className="custom-gradient-shadow rounded-full p-1 sm:p-2 bg-[#F7F6F6]"
               onClick={() => setShowLoginModal(true)}
             >
               <Image
-                src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
+                src={"/logo.jpg"}
                 alt="CIME Logo"
-                width={40}
-                height={40}
+                width={60}
+                height={60}
                 className="w-8 h-8 sm:w-10 sm:h-10"
               />
             </div>
@@ -708,9 +708,9 @@ function App() {
           >
             {messages.length === 0 && (
               <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
-                <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow">
+                <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow bg-[#F7F6F6]">
                   <Image
-                    src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
+                    src={"/logo.jpg"}
                     alt="CIME Logo"
                     width={52}
                     height={52}
