@@ -101,7 +101,7 @@ function App() {
         setChatHistory(JSON.parse(savedHistory));
       }
     } else {
-      setShowLoginModal(true); // Show login modal if not logged in on app load
+      setShowRegisterModal(true) // Show login modal if not logged in on app load
     }
   }, []);
 
