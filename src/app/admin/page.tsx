@@ -43,6 +43,7 @@ const AdminDashboard = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"upload" | "analytics">("upload");
+  const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<"registered" | "visits" | "activities">("registered");
   const [pdfFiles, setPdfFiles] = useState<PdfFile[]>([]);
   const [userVisits, setUserVisits] = useState<UserVisit[]>([]);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
@@ -52,9 +53,7 @@ const AdminDashboard = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState<string | null>(null);
-  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<
-    string | null
-  >(null);
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -81,7 +80,6 @@ const AdminDashboard = () => {
     const uploadedPdfs = localStorage.getItem("uploadedPdfs");
     return uploadedPdfs ? JSON.parse(uploadedPdfs) : {};
   };
-
   const addUploadedPdf = (id: string, name: string, uploadDate: string) => {
     const uploadedPdfs = getUploadedPdfs();
     uploadedPdfs[id] = { name, uploadDate };
@@ -288,7 +286,12 @@ const AdminDashboard = () => {
           setUserActivities(
             newActivities.map((activity) => ({
               ...activity,
-              action: activity.action as "upload" | "rebuild" | "delete" | "login" | "query",
+              action: activity.action as
+                | "upload"
+                | "rebuild"
+                | "delete"
+                | "login"
+                | "query",
             }))
           );
           localStorage.setItem("userActivities", JSON.stringify(newActivities));
@@ -331,7 +334,12 @@ const AdminDashboard = () => {
     setUserActivities(
       newActivities.map((activity) => ({
         ...activity,
-        action: activity.action as "upload" | "rebuild" | "login" | "query" | "delete",
+        action: activity.action as
+          | "upload"
+          | "rebuild"
+          | "login"
+          | "query"
+          | "delete",
       }))
     );
     localStorage.setItem("userActivities", JSON.stringify(newActivities));
@@ -367,7 +375,7 @@ const AdminDashboard = () => {
     file.name.toLowerCase().endsWith(".pdf")
   ).length;
 
-  // User Growth: Percentage based on total registered users (assuming base of 1 user)
+  // User Growth: Percentage based on total registered users (assuming base of1 user)
   const userGrowth = totalVisitors > 0 ? (totalVisitors / 1) * 100 : 0;
 
   if (!isLoggedIn) {
@@ -758,229 +766,266 @@ const AdminDashboard = () => {
                   {error}
                 </div>
               )}
-              {/* Registered Users Section */}
-              <div className="mb-4 sm:mb-6 w-full">
-                <h4 className="text-base sm:text-lg font-semibold mb-2 text-gray-800">
+              {/* Analytics Tabs */}
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  className={`flex-1 px-4 py-2 font-medium text-sm text-center ${
+                    activeAnalyticsTab === "registered"
+                      ? "text-blue-600 border-b-2 border-blue-600 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  } transition-colors duration-200`}
+                  onClick={() => setActiveAnalyticsTab("registered")}
+                >
                   Registered Users
-                </h4>
-                <div className="overflow-x-auto w-full">
-                  <table className="min-w-full divide-y divide-gray-200 mobile-table">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th
-                          data-label="Name"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Name
-                        </th>
-                        <th
-                          data-label="Email"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Email
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {registeredUsers.length > 0 ? (
-                        registeredUsers.map((user, index) => (
-                          <tr
-                            key={index}
-                            className="hover:bg-gray-50 transition-colors"
+                </button>
+                <button
+                  className={`flex-1 px-4 py-2 font-medium text-sm text-center ${
+                    activeAnalyticsTab === "visits"
+                      ? "text-blue-600 border-b-2 border-blue-600 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  } transition-colors duration-200`}
+                  onClick={() => setActiveAnalyticsTab("visits")}
+                >
+                  User Visits
+                </button>
+                <button
+                  className={`flex-1 px-4 py-2 font-medium text-sm text-center ${
+                    activeAnalyticsTab === "activities"
+                      ? "text-blue-600 border-b-2 border-blue-600 font-semibold"
+                      : "text-gray-500 hover:text-gray-700"
+                  } transition-colors duration-200`}
+                  onClick={() => setActiveAnalyticsTab("activities")}
+                >
+                  User Activities
+                </button>
+              </div>
+              {/* Analytics Tab Content */}
+              {activeAnalyticsTab === "registered" && (
+                <div className="mb-4 sm:mb-6 w-full">
+                  <h4 className="text-base sm:text-lg font-semibold mb-2 text-gray-800">
+                    Registered Users
+                  </h4>
+                  <div className="overflow-x-auto w-full">
+                    <table className="min-w-full divide-y divide-gray-200 mobile-table">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th
+                            data-label="Name"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
-                            <td
-                              data-before="Name"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900"
+                            Name
+                          </th>
+                          <th
+                            data-label="Email"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Email
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {registeredUsers.length > 0 ? (
+                          registeredUsers.map((user, index) => (
+                            <tr
+                              key={index}
+                              className="hover:bg-gray-50 transition-colors"
                             >
-                              <span className="sm:hidden font-medium">
-                                Name:{" "}
-                              </span>
-                              {user.name}
-                            </td>
+                              <td
+                                data-before="Name"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Name:{" "}
+                                </span>
+                                {user.name}
+                              </td>
+                              <td
+                                data-before="Email"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Email:{" "}
+                                </span>
+                                {user.email}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
                             <td
-                              data-before="Email"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              colSpan={2}
+                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
                             >
-                              <span className="sm:hidden font-medium">
-                                Email:{" "}
-                              </span>
-                              {user.email}
+                              No registered users yet.
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={2}
-                            className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
-                          >
-                            No registered users yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              {/* User Visit Analytics Section */}
-              <div className="mb-4 sm:mb-6 w-full">
-                <h4 className="text-base sm:text-lg font-semibold mb-2 text-gray-800">
-                  User Visit Analytics
-                </h4>
-                <div className="overflow-x-auto w-full">
-                  <table className="min-w-full divide-y divide-gray-200 mobile-table">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th
-                          data-label="Email"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Email
-                        </th>
-                        <th
-                          data-label="Visit Count"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Visit Count
-                        </th>
-                        <th
-                          data-label="Last Visit"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Last Visit
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {userVisits.length > 0 ? (
-                        userVisits.map((user, index) => (
-                          <tr
-                            key={index}
-                            className="hover:bg-gray-50 transition-colors"
+              )}
+              {activeAnalyticsTab === "visits" && (
+                <div className="mb-4 sm:mb-6 w-full">
+                  <h4 className="text-base sm:text-lg font-semibold mb-2 text-gray-800">
+                    User Visit Analytics
+                  </h4>
+                  <div className="overflow-x-auto w-full">
+                    <table className="min-w-full divide-y divide-gray-200 mobile-table">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th
+                            data-label="Email"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
-                            <td
-                              data-before="Email"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900"
+                            Email
+                          </th>
+                          <th
+                            data-label="Visit Count"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Visit Count
+                          </th>
+                          <th
+                            data-label="Last Visit"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Last Visit
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {userVisits.length > 0 ? (
+                          userVisits.map((user, index) => (
+                            <tr
+                              key={index}
+                              className="hover:bg-gray-50 transition-colors"
                             >
-                              <span className="sm:hidden font-medium">
-                                Email:{" "}
-                              </span>
-                              {user.email}
-                            </td>
+                              <td
+                                data-before="Email"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Email:{" "}
+                                </span>
+                                {user.email}
+                              </td>
+                              <td
+                                data-before="Visit Count"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Visit Count:{" "}
+                                </span>
+                                {user.visitCount}
+                              </td>
+                              <td
+                                data-before="Last Visit"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Last Visit:{" "}
+                                </span>
+                                {user.lastVisit}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
                             <td
-                              data-before="Visit Count"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              colSpan={3}
+                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
                             >
-                              <span className="sm:hidden font-medium">
-                                Visit Count:{" "}
-                              </span>
-                              {user.visitCount}
-                            </td>
-                            <td
-                              data-before="Last Visit"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
-                            >
-                              <span className="sm:hidden font-medium">
-                                Last Visit:{" "}
-                              </span>
-                              {user.lastVisit}
+                              No user visits recorded yet.
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={3}
-                            className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
-                          >
-                            No user visits recorded yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              {/* User Activity Analysis Section */}
-              <div className="w-full">
-                <h4 className="text-base sm:text-lg font-semibold mb-2 text-gray-800">
-                  User Activity Analysis
-                </h4>
-                <div className="overflow-x-auto w-full">
-                  <table className="min-w-full divide-y divide-gray-200 mobile-table">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th
-                          data-label="Email"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Email
-                        </th>
-                        <th
-                          data-label="Action"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Action
-                        </th>
-                        <th
-                          data-label="Timestamp"
-                          className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Timestamp
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {userActivities.length > 0 ? (
-                        userActivities.map((activity, index) => (
-                          <tr
-                            key={index}
-                            className="hover:bg-gray-50 transition-colors"
+              )}
+              {activeAnalyticsTab === "activities" && (
+                <div className="w-full">
+                  <h4 className="text-base sm:text-lg font-semibold mb-2 text-gray-800">
+                    User Activity Analysis
+                  </h4>
+                  <div className="overflow-x-auto w-full">
+                    <table className="min-w-full divide-y divide-gray-200 mobile-table">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th
+                            data-label="Email"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
-                            <td
-                              data-before="Email"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900"
+                            Email
+                          </th>
+                          <th
+                            data-label="Action"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Action
+                          </th>
+                          <th
+                            data-label="Timestamp"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Timestamp
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {userActivities.length > 0 ? (
+                          userActivities.map((activity, index) => (
+                            <tr
+                              key={index}
+                              className="hover:bg-gray-50 transition-colors"
                             >
-                              <span className="sm:hidden font-medium">
-                                Email:{" "}
-                              </span>
-                              {activity.email}
-                            </td>
+                              <td
+                                data-before="Email"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Email:{" "}
+                                </span>
+                                {activity.email}
+                              </td>
+                              <td
+                                data-before="Action"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Action:{" "}
+                                </span>
+                                {activity.action.charAt(0).toUpperCase() +
+                                  activity.action.slice(1)}
+                              </td>
+                              <td
+                                data-before="Timestamp"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Timestamp:{" "}
+                                </span>
+                                {activity.timestamp}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
                             <td
-                              data-before="Action"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              colSpan={3}
+                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
                             >
-                              <span className="sm:hidden font-medium">
-                                Action:{" "}
-                              </span>
-                              {activity.action.charAt(0).toUpperCase() +
-                                activity.action.slice(1)}
-                            </td>
-                            <td
-                              data-before="Timestamp"
-                              className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
-                            >
-                              <span className="sm:hidden font-medium">
-                                Timestamp:{" "}
-                              </span>
-                              {activity.timestamp}
+                              No user activities recorded yet.
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={3}
-                            className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
-                          >
-                            No user activities recorded yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
