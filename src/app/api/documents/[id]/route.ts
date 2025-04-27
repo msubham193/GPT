@@ -8,7 +8,7 @@ export async function DELETE(
     const { id } = await context.params; // Await params to resolve the Promise
     console.log("Deleting document with ID:", id); // Debug log
 
-    const response = await fetch(`http://65.2.73.254:8000/${id}`, {
+    const response = await fetch(`http://13.234.110.97:8000/documents/${id}`, {
       method: "DELETE",
     });
 

@@ -13,12 +13,13 @@ import {
   Home,
 } from "lucide-react";
 import Image from "next/image";
+import toast, { Toaster } from "react-hot-toast";
 
 interface PdfFile {
   id: string;
   name: string;
   size?: number;
-  uploadDate: string;
+  uploadDate?: string;
 }
 
 interface UserVisit {
@@ -34,66 +35,153 @@ interface UserActivity {
 }
 
 interface RegisteredUser {
-  name: string;
+  id: string;
   email: string;
-  password: string;
+  name: string;
+  created_at: string;
 }
 
 const AdminDashboard = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // New loading state
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"upload" | "analytics">("upload");
-  const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<"registered" | "visits" | "activities">("registered");
+  const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<
+    "registered" | "visits" | "activities"
+  >("registered");
   const [pdfFiles, setPdfFiles] = useState<PdfFile[]>([]);
   const [userVisits, setUserVisits] = useState<UserVisit[]>([]);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<
+    "uploading" | "analyzing" | null
+  >(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState<string | null>(null);
-  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<string | null>(null);
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<
+    string | null
+  >(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
-  // Helper to manage deleted PDFs in localStorage
-  const getDeletedPdfIds = (): string[] => {
-    const deletedIds = localStorage.getItem("deletedPdfIds");
-    return deletedIds ? JSON.parse(deletedIds) : [];
+  // Format created_at timestamp
+  const formatDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
-  const addDeletedPdfId = (id: string) => {
-    const deletedIds = getDeletedPdfIds();
-    if (!deletedIds.includes(id)) {
-      deletedIds.push(id);
-      localStorage.setItem("deletedPdfIds", JSON.stringify(deletedIds));
-    }
-  };
-
-  // Helper to manage uploaded PDFs with timestamps in localStorage
-  const getUploadedPdfs = (): Record<
-    string,
-    { name: string; uploadDate: string }
-  > => {
-    const uploadedPdfs = localStorage.getItem("uploadedPdfs");
-    return uploadedPdfs ? JSON.parse(uploadedPdfs) : {};
-  };
-  const addUploadedPdf = (id: string, name: string, uploadDate: string) => {
-    const uploadedPdfs = getUploadedPdfs();
-    uploadedPdfs[id] = { name, uploadDate };
-    localStorage.setItem("uploadedPdfs", JSON.stringify(uploadedPdfs));
-  };
-
-  // Check login state
+  // Check login state and fetch users
   useEffect(() => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (!loggedIn) {
+    const currentUser = localStorage.getItem("currentUser");
+    if (!loggedIn || currentUser !== "admin@cime.ac.in") {
+      toast.error("Unauthorized access", {
+        position: "bottom-center",
+        duration: 3000,
+      });
       router.push("/");
-    } else {
-      setIsLoggedIn(true);
+      return;
     }
+    setIsLoggedIn(true);
+
+    // Fetch registered users from API
+    const fetchUsers = async () => {
+      setIsLoading(true); // Start loading
+      try {
+        const response = await fetch("/api/users", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to fetch users");
+        }
+
+        setRegisteredUsers(data.data);
+        toast.success("Users fetched successfully!", {
+          position: "bottom-center",
+          duration: 2000,
+        });
+
+        // Simulate user visits based on registered users
+        const storedVisits = JSON.parse(
+          localStorage.getItem("userVisits") || "[]"
+        );
+        const visits = data.data.map((user: RegisteredUser) => {
+          const existingVisit = storedVisits.find(
+            (visit: UserVisit) => visit.email === user.email
+          );
+          return (
+            existingVisit || {
+              email: user.email,
+              visitCount: 1,
+              lastVisit: new Date()
+                .toISOString()
+                .slice(0, 16)
+                .replace("T", " "),
+            }
+          );
+        });
+        setUserVisits(visits);
+        localStorage.setItem("userVisits", JSON.stringify(visits));
+
+        // Simulate user activities (login) based on registered users
+        const storedActivities = JSON.parse(
+          localStorage.getItem("userActivities") || "[]"
+        );
+        const activities = data.data.map((user: RegisteredUser) => {
+          const existingActivity = storedActivities.find(
+            (activity: UserActivity) =>
+              activity.email === user.email && activity.action === "login"
+          );
+          return (
+            existingActivity || {
+              email: user.email,
+              action: "login" as const,
+              timestamp: new Date()
+                .toISOString()
+                .slice(0, 16)
+                .replace("T", " "),
+            }
+          );
+        });
+        const allActivities = [
+          ...activities,
+          ...storedActivities.filter(
+            (activity: UserActivity) => activity.action !== "login"
+          ),
+        ];
+        setUserActivities(allActivities);
+        localStorage.setItem("userActivities", JSON.stringify(allActivities));
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch users");
+        toast.error(err.message || "Failed to fetch users", {
+          position: "bottom-center",
+          duration: 3000,
+        });
+        setRegisteredUsers([]);
+      } finally {
+        setIsLoading(false); // Stop loading
+      }
+    };
+
+    fetchUsers();
   }, [router]);
 
   // Update current date and time
@@ -104,64 +192,9 @@ const AdminDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch registered users from localStorage
-  useEffect(() => {
-    const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-    setRegisteredUsers(users);
-
-    // Simulate user visits based on registered users
-    const storedVisits = JSON.parse(localStorage.getItem("userVisits") || "[]");
-    const visits = users.map((user: RegisteredUser) => {
-      const existingVisit = storedVisits.find(
-        (visit: UserVisit) => visit.email === user.email
-      );
-      return (
-        existingVisit || {
-          email: user.email,
-          visitCount: 1,
-          lastVisit: new Date().toISOString().slice(0, 16).replace("T", " "),
-        }
-      );
-    });
-    setUserVisits(visits);
-    localStorage.setItem("userVisits", JSON.stringify(visits));
-
-    // Fetch user activities from localStorage (admin activities are already logged)
-    const storedActivities = JSON.parse(
-      localStorage.getItem("userActivities") || "[]"
-    );
-    const activities = users.map((user: RegisteredUser) => {
-      const existingActivity = storedActivities.find(
-        (activity: UserActivity) =>
-          activity.email === user.email && activity.action === "login"
-      );
-      return (
-        existingActivity || {
-          email: user.email,
-          action: "login",
-          timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-        }
-      );
-    });
-    // Combine simulated login activities with existing admin activities
-    const allActivities = [
-      ...activities,
-      ...storedActivities.filter(
-        (activity: UserActivity) => activity.action !== "login"
-      ),
-    ];
-    setUserActivities(allActivities);
-    localStorage.setItem("userActivities", JSON.stringify(allActivities));
-  }, []);
-
-  // Handle mobile menu tab selection
-  const handleMobileTabSelect = (tab: "upload" | "analytics") => {
-    setActiveTab(tab);
-    setMobileMenuOpen(false);
-  };
-
-  // Fetch PDF documents with retry logic and filter out deleted PDFs
+  // Fetch PDF documents with retry logic
   const fetchDocuments = async (retries = 3, delay = 1000): Promise<void> => {
+    setIsLoading(true); // Start loading
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         const response = await fetch("/api/documents", {
@@ -173,21 +206,15 @@ const AdminDashboard = () => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const documentIds: string[] = await response.json();
-        const deletedIds = getDeletedPdfIds();
-        const uploadedPdfs = getUploadedPdfs();
-        const files = documentIds
-          .filter((id) => !deletedIds.includes(id))
-          .map((id) => ({
-            id,
-            name: uploadedPdfs[id]?.name || id,
-            uploadDate:
-              uploadedPdfs[id]?.uploadDate ||
-              new Date().toISOString().slice(0, 16).replace("T", " "),
-            size: undefined,
-          }));
-        console.log("Fetched and filtered documents:", files);
-        setPdfFiles(files);
+        const documentNames: string[] = await response.json();
+        console.log("Fetched document names:", documentNames);
+        // Transform string array to PdfFile array
+        const documents: PdfFile[] = documentNames.map((name) => ({
+          id: name,
+          name: name,
+          uploadDate: new Date().toISOString().slice(0, 16).replace("T", " "), // Placeholder timestamp
+        }));
+        setPdfFiles(documents);
         setError(null);
         return;
       } catch (err) {
@@ -200,6 +227,12 @@ const AdminDashboard = () => {
           "Failed to load document list after multiple attempts. Please try again later."
         );
         setPdfFiles([]);
+        toast.error("Failed to load document list. Please try again later.", {
+          position: "bottom-center",
+          duration: 3000,
+        });
+      } finally {
+        setIsLoading(false); // Stop loading
       }
     }
   };
@@ -214,6 +247,11 @@ const AdminDashboard = () => {
   const handleLogout = () => {
     setIsLoggedIn(false);
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("currentUser");
+    toast.success("Signed out successfully!", {
+      position: "bottom-center",
+      duration: 2000,
+    });
     router.push("/");
   };
 
@@ -221,24 +259,35 @@ const AdminDashboard = () => {
     router.push("/");
   };
 
+  const handleMobileTabSelect = (tab: "upload" | "analytics") => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       console.log("Starting upload for files:", files.length);
       setIsUploading(true);
+      setUploadStatus("uploading");
       setError(null);
+
+      // Set timer to switch to "Analyzing..." after 5 seconds
+      uploadTimerRef.current = setTimeout(() => {
+        setUploadStatus("analyzing");
+      }, 5000);
+
       for (const file of Array.from(files)) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("document_name", file.name);
 
         try {
-          // Optimistically update the UI before the API responds
           const timestamp = new Date()
             .toISOString()
             .slice(0, 16)
             .replace("T", " ");
-          const optimisticId = `temp-${file.name}-${Date.now()}`; // Unique temp ID to avoid duplicates
+          const optimisticId = `temp-${file.name}-${Date.now()}`;
           setPdfFiles((prevFiles) => [
             ...prevFiles,
             {
@@ -258,8 +307,7 @@ const AdminDashboard = () => {
             );
           }
           const uploadData = await uploadResponse.json();
-          const documentId = uploadData.id || file.name; // Use the ID returned by the API
-          addUploadedPdf(documentId, file.name, timestamp);
+          const documentId = uploadData.id || file.name;
 
           const rebuildResponse = await fetch("/api/rebuild-index", {
             method: "POST",
@@ -270,10 +318,8 @@ const AdminDashboard = () => {
             );
           }
 
-          // Fetch the updated document list after upload
           await fetchDocuments();
 
-          // Remove the optimistic entry now that we have the real data
           setPdfFiles((prevFiles) =>
             prevFiles.filter((f) => f.id !== optimisticId)
           );
@@ -283,71 +329,91 @@ const AdminDashboard = () => {
             { email: "admin@cime.ac.in", action: "upload" as const, timestamp },
             { email: "admin@cime.ac.in", action: "rebuild" as const, timestamp },
           ];
-          setUserActivities(
-            newActivities.map((activity) => ({
-              ...activity,
-              action: activity.action as
-                | "upload"
-                | "rebuild"
-                | "delete"
-                | "login"
-                | "query",
-            }))
-          );
+          setUserActivities(newActivities as UserActivity[]);
           localStorage.setItem("userActivities", JSON.stringify(newActivities));
           setShowSuccessModal(`PDF "${file.name}" uploaded successfully.`);
+          toast.success(`PDF "${file.name}" uploaded successfully!`, {
+            position: "bottom-center",
+            duration: 2000,
+          });
         } catch (err) {
           console.error("Error uploading PDF:", err);
           setShowErrorModal(
             `Failed to upload "${file.name}". Please try again.`
           );
-          // Revert optimistic update on failure
+          toast.error(`Failed to upload "${file.name}"`, {
+            position: "bottom-center",
+            duration: 3000,
+          });
           setPdfFiles((prevFiles) =>
             prevFiles.filter((f) => f.id !== `temp-${file.name}-${Date.now()}`)
           );
         }
       }
       setIsUploading(false);
+      setUploadStatus(null);
+      if (uploadTimerRef.current) {
+        clearTimeout(uploadTimerRef.current);
+        uploadTimerRef.current = null;
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     }
   };
 
-  const handleDeletePdf = (id: string) => {
+  const handleDeletePdf = async (id: string) => {
     console.log("Deleting document from frontend:", id);
     setShowConfirmDeleteModal(null);
     setDeletingId(id);
 
-    // Add the PDF ID to the list of deleted IDs in localStorage
-    addDeletedPdfId(id);
-
-    // Remove the PDF from the frontend state
+    // Optimistically remove the PDF from the frontend
+    const fileName = pdfFiles.find((file) => file.id === id)?.name || id;
     setPdfFiles((prevFiles) => prevFiles.filter((file) => file.id !== id));
 
-    // Log the delete action in user activities
-    const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-    const newActivities = [
-      ...userActivities,
-      { email: "admin@cime.ac.in", action: "delete", timestamp },
-    ];
-    setUserActivities(
-      newActivities.map((activity) => ({
-        ...activity,
-        action: activity.action as
-          | "upload"
-          | "rebuild"
-          | "login"
-          | "query"
-          | "delete",
-      }))
-    );
-    localStorage.setItem("userActivities", JSON.stringify(newActivities));
+    try {
+      const response = await fetch(`/api/documents/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
 
-    // Show success message
-    setShowSuccessModal(`Document "${id}" removed from view successfully.`);
+      if (!response.ok) {
+        throw new Error(`Failed to delete PDF: ${response.statusText}`);
+      }
 
-    setDeletingId(null);
+      const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+      const newActivities = [
+        ...userActivities,
+        { email: "admin@cime.ac.in", action: "delete", timestamp },
+      ];
+      setUserActivities(
+        newActivities.map((activity) => ({
+          ...activity,
+          action: activity.action as "upload" | "rebuild" | "login" | "query" | "delete",
+        }))
+      );
+      localStorage.setItem("userActivities", JSON.stringify(newActivities));
+
+      setShowSuccessModal(`Document "${fileName}" deleted successfully.`);
+      toast.success(`Document "${fileName}" deleted successfully!`, {
+        position: "bottom-center",
+        duration: 2000,
+      });
+    } catch (err) {
+      console.error("Error deleting PDF:", err);
+      // Roll back the optimistic update
+      await fetchDocuments();
+      setShowErrorModal(`Failed to delete "${fileName}". Please try again.`);
+      toast.error(`Failed to delete "${fileName}"`, {
+        position: "bottom-center",
+        duration: 3000,
+      });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const triggerFileInput = () => {
@@ -364,18 +430,16 @@ const AdminDashboard = () => {
       window.open(pdfUrl, "_blank", "noopener,noreferrer");
     } catch (err) {
       setShowErrorModal(`Failed to open document "${id}". Please try again.`);
+      toast.error(`Failed to open document "${id}"`, {
+        position: "bottom-center",
+        duration: 3000,
+      });
     }
   };
 
-  // Total Visitors: Number of registered users
   const totalVisitors = registeredUsers.length;
-
   const totalDocs = pdfFiles.length;
-  const totalPdfs = pdfFiles.filter((file) =>
-    file.name.toLowerCase().endsWith(".pdf")
-  ).length;
-
-  // User Growth: Percentage based on total registered users (assuming base of1 user)
+  const totalPdfs = pdfFiles.length;
   const userGrowth = totalVisitors > 0 ? (totalVisitors / 1) * 100 : 0;
 
   if (!isLoggedIn) {
@@ -384,6 +448,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 font-poppins flex flex-col">
+      <Toaster />
       <style jsx>{`
         @keyframes spin {
           0% {
@@ -487,6 +552,16 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Full-Screen Loader */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="flex flex-col items-center">
+            <Loader2 className="w-12 h-12 text-gray-700 animate-spin" />
+            <p className="mt-4 text-lg text-gray-700">Loading data...</p>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
@@ -652,7 +727,9 @@ const AdminDashboard = () => {
                   {isUploading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Uploading...
+                      {uploadStatus === "uploading"
+                        ? "Uploading..."
+                        : "Analyzing..."}
                     </>
                   ) : (
                     "Browse Files"
@@ -717,7 +794,7 @@ const AdminDashboard = () => {
                               <span className="sm:hidden font-medium">
                                 Upload Date:{" "}
                               </span>
-                              {file.uploadDate}
+                              {file.uploadDate || "N/A"}
                             </td>
                             <td
                               data-before="Action"
@@ -810,6 +887,12 @@ const AdminDashboard = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th
+                            data-label="ID"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            ID
+                          </th>
+                          <th
                             data-label="Name"
                             className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
@@ -821,15 +904,30 @@ const AdminDashboard = () => {
                           >
                             Email
                           </th>
+                          <th
+                            data-label="Created At"
+                            className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Created At
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {registeredUsers.length > 0 ? (
-                          registeredUsers.map((user, index) => (
+                          registeredUsers.map((user) => (
                             <tr
-                              key={index}
+                              key={user.id}
                               className="hover:bg-gray-50 transition-colors"
                             >
+                              <td
+                                data-before="ID"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  ID:{" "}
+                                </span>
+                                {user.id}
+                              </td>
                               <td
                                 data-before="Name"
                                 className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900"
@@ -848,12 +946,21 @@ const AdminDashboard = () => {
                                 </span>
                                 {user.email}
                               </td>
+                              <td
+                                data-before="Created At"
+                                className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500"
+                              >
+                                <span className="sm:hidden font-medium">
+                                  Created At:{" "}
+                                </span>
+                                {formatDate(user.created_at)}
+                              </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
                             <td
-                              colSpan={2}
+                              colSpan={4}
                               className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
                             >
                               No registered users yet.

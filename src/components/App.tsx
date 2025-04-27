@@ -15,9 +15,11 @@ import {
   AlignJustify,
   LogOut,
   Settings,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AnimatedGradientText from "./ui/animated-gradient-text";
 import { cn } from "@/lib/utils";
 import ShineBorder from "./ui/shine-border";
@@ -78,7 +80,10 @@ function App() {
     null
   );
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Scroll to the bottom of the chat when new messages are added
   const scrollToBottom = () => {
@@ -101,7 +106,7 @@ function App() {
         setChatHistory(JSON.parse(savedHistory));
       }
     } else {
-      setShowRegisterModal(true); // Show login modal if not logged in on app load
+      setShowRegisterModal(true); // Show register modal if not logged in on app load
     }
   }, []);
 
@@ -192,21 +197,37 @@ function App() {
   };
 
   // Handle user login
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      (email === "admin@cime.ac.in" && password === "admin123") ||
-      checkUserCredentials(email, password)
-    ) {
+    setError(null);
+    setIsSubmittingLogin(true);
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Invalid credentials");
+      }
+
       setIsLoggedIn(true);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("currentUser", email);
       setCurrentUser(email);
       setShowLoginModal(false);
+
       const savedHistory = localStorage.getItem(`chatHistory_${email}`);
       if (savedHistory) {
         setChatHistory(JSON.parse(savedHistory));
       }
+
       setUserActivities((prev) => [
         ...prev,
         {
@@ -215,89 +236,101 @@ function App() {
           timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
         },
       ]);
+
       toast.success("Login successful!", {
         position: "bottom-center",
         duration: 2000,
       });
+
       if (email === "admin@cime.ac.in") {
-        window.location.href = "/admin"; // Redirect to admin dashboard if admin
+        router.push("/admin"); // Redirect to admin dashboard if admin
       }
-    } else {
-      setError("Invalid credentials. Please try again.");
+
+      // Reset form
+      setEmail("");
+      setPassword("");
+    } catch (err: any) {
+      setError(err.message || "Failed to login. Please try again.");
+      toast.error(err.message || "Failed to login", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+    } finally {
+      setIsSubmittingLogin(false);
     }
   };
 
   // Handle user registration
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setIsSubmittingRegister(true);
 
     if (!name.trim()) {
       setError("Name is required");
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      toast.error("Name is required", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+      setIsSubmittingRegister(false);
       return;
     }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      toast.error("Passwords do not match", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+      setIsSubmittingRegister(false);
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-    if (users.some((user: { email: string }) => user.email === email)) {
-      setError("Email already registered. Please login instead.");
-      return;
+    try {
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, name, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create account");
+      }
+
+      setUserActivities((prev) => [
+        ...prev,
+        {
+          email,
+          action: "register",
+          timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
+        },
+      ]);
+
+      toast.success("Registration successful! Please login.", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+
+      // Reset form and switch to login modal
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      setShowRegisterModal(false);
+      setShowLoginModal(true);
+    } catch (err: any) {
+      setError(err.message || "Failed to register. Please try again.");
+      toast.error(err.message || "Failed to register", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+    } finally {
+      setIsSubmittingRegister(false);
     }
-
-    const newUser = { name, email, password };
-    localStorage.setItem(
-      "registeredUsers",
-      JSON.stringify([...users, newUser])
-    );
-
-    setUserActivities((prev) => [
-      ...prev,
-      {
-        email,
-        action: "register",
-        timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
-      },
-    ]);
-
-    setIsLoggedIn(true);
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("currentUser", email);
-    setCurrentUser(email);
-
-    setShowRegisterModal(false);
-    setName("");
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
-    setError(null);
-  };
-
-  // Check user credentials for login
-  const checkUserCredentials = (email: string, password: string): boolean => {
-    const users = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-    return users.some(
-      (user: { email: string; password: string }) =>
-        user.email === email && user.password === password
-    );
-  };
-
-  // Validate email format
-  const validateEmail = (email: string): boolean => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
   };
 
   // Handle user logout
@@ -325,6 +358,8 @@ function App() {
     setShowLoginModal(false);
     setShowRegisterModal(true);
     setError(null);
+    setEmail("");
+    setPassword("");
   };
 
   // Switch to login modal
@@ -332,6 +367,10 @@ function App() {
     setShowRegisterModal(false);
     setShowLoginModal(true);
     setError(null);
+    setName("");
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
   };
 
   // Toggle history sidebar visibility on click
@@ -403,10 +442,9 @@ function App() {
     formattedText = formattedText.replace(/<\/li>\n<li>/g, "</li><li>");
 
     // Group bullet lists within <ul> tags
-    const bulletListRegex = /(<li>.+?<\/li>)+/gs;
+    const bulletListRegex = /(&lt;li&gt;.+?&lt;\/li&gt;)+/gs;
     let match;
     while ((match = bulletListRegex.exec(formattedText)) !== null) {
-      // Only wrap in <ul> if not already wrapped
       if (
         !/^<[ou]l>/.test(match[0]) &&
         !/^<[ou]l>/.test(
@@ -420,15 +458,12 @@ function App() {
     // Handle numbered lists - preserve the original numbers
     formattedText = formattedText.replace(
       /^[\s]*(\d+)\.[\s]+(.+)$/gm,
-      (match, number, content) => {
-        return `<li value="${number}">${content}</li>`;
-      }
+      (match, number, content) => `<li value="${number}">${content}</li>`
     );
 
     // Group numbered lists within <ol> tags
-    const numberedListRegex = /(<li value="\d+">.+?<\/li>)+/gs;
+    const numberedListRegex = /(<li>.+?<\?\/li>)+/gs;
     while ((match = numberedListRegex.exec(formattedText)) !== null) {
-      // Only wrap in <ol> if not already wrapped
       if (
         !/^<[ou]l>/.test(match[0]) &&
         !/^<[ou]l>/.test(
@@ -613,196 +648,94 @@ function App() {
       </div>
 
       {/* Chat Interface and History Sidebar */}
-      <div className="flex flex-1 flex-col min-h-[calc(100vh-4rem)]">
-        {/* History Sidebar */}
-        {isLoggedIn && (
-          <div
-            className={`fixed inset-y-0 left-0 z-20 bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${
-              showHistorySidebar ? "translate-x-0" : "-translate-x-full"
-            } w-64 sm:w-80 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100`}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Chat History</h2>
-              <button
-                onClick={() => setShowHistorySidebar(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            {chatHistory.length === 0 ? (
-              <p className="text-sm text-gray-500">No chat history yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {chatHistory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-between"
-                  >
-                    <div
-                      className="cursor-pointer flex-1 max-w-[80%]"
-                      onClick={() => handleHistoryClick(item)}
-                    >
-                      <p className="text-xs font-medium text-gray-900 truncate">
-                        {item.query}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {getFormattedTime(item.timestamp)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteHistory(item.id)}
-                      className="text-red-500 hover:text-red-700 transition-colors p-1"
-                      title="Delete chat"
-                      disabled={isDeleting === item.id}
-                    >
-                      {isDeleting === item.id ? (
-                        <svg
-                          className="w-4 h-4 animate-spin text-red-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z"
-                          />
-                        </svg>
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                ))}
+      <div className="flex flex-1 flex-col min-h-[calc(100vh-4rem)] max-w-4xl mx-auto w-full px-2 sm:px-4">
+        {/* Chat Messages Container */}
+        <div
+          className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 mb-2 space-y-3 sm:space-y-4 ${
+            messages.length === 0 ? "flex flex-col justify-center" : ""
+          } min-h-[40vh]`}
+        >
+          {messages.length === 0 && (
+            <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
+              <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow bg-[#F7F6F6]">
+                <Image
+                  src={"/logo.jpg"}
+                  alt="CIME Logo"
+                  width={52}
+                  height={52}
+                  className="w-8 h-8 sm:w-12 sm:h-12"
+                />
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Main Chat Interface */}
-        <div className="flex flex-col flex-1.5 max-w-4xl mx-auto p-2 sm:p-4 w-full">
-          <div
-            className={`flex-1 mb-2 space-y-3 sm:space-y-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 ${
-              messages.length === 0 ? "" : "overflow-y-auto"
-            } min-h-[40vh]`}
-          >
-            {messages.length === 0 && (
-              <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
-                <div className="inline-block rounded-full p-2 sm:p-4 mb-2 sm:mb-3 custom-gradient-shadow bg-[#F7F6F6]">
+              <h2 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent px-2">
+                Welcome to College of IT & Management Education Bhubaneswar
+                GPT
+              </h2>
+            </div>
+          )}
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex mt-10 items-start gap-2 sm:gap-4 relative ${
+                message.type === "user" ? "justify-end" : ""
+              } animate-fadeIn w-full`}
+            >
+              {message.type === "bot" && (
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-blue-100 to-blue-100 flex items-center justify-center shadow-lg shadow-blue-400/20 flex-shrink-0">
                   <Image
-                    src={"/logo.jpg"}
+                    src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
                     alt="CIME Logo"
-                    width={52}
-                    height={52}
-                    className="w-8 h-8 sm:w-12 sm:h-12"
+                    width={25}
+                    height={25}
+                    className="w-4 h-4 sm:w-5 sm:h-5"
                   />
                 </div>
-                <h2 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent px-2">
-                  Welcome to College of IT & Management Education Bhubaneswar
-                  GPT
-                </h2>
-              </div>
-            )}
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex mt-10 items-start gap-2 sm:gap-4 relative ${
-                  message.type === "user" ? "justify-end" : ""
-                } animate-fadeIn w-full`}
-              >
-                {message.type === "bot" && (
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-blue-100 to-blue-100 flex items-center justify-center shadow-lg shadow-blue-400/20 flex-shrink-0">
-                    <Image
-                      src={"https://www.cime.ac.in/assets/image/logos/Logo.png"}
-                      alt="CIME Logo"
-                      width={25}
-                      height={25}
-                      className="w-4 h-4 sm:w-5 sm:h-5"
+              )}
+              <div className="flex flex-col items-start">
+                <div
+                  className={`max-w-[100%] sm:max-w-[100%] p-2 sm:p-3 rounded-lg backdrop-blur-md shadow-lg ${
+                    message.type === "user"
+                      ? "bg-blue-500/80 shadow-blue-400/20 text-white"
+                      : "bg-gray-100/80 shadow-gray-200/20 text-gray-900"
+                  }`}
+                >
+                  {message.type === "bot" ? (
+                    <div
+                      className="markdown-content text-xs sm:text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: formatText(message.content),
+                      }}
                     />
-                  </div>
-                )}
-                <div className="flex flex-col items-start">
-                  <div
-                    className={`max-w-[100%] sm:max-w-[100%] p-2 sm:p-3 rounded-lg backdrop-blur-md shadow-lg ${
-                      message.type === "user"
-                        ? "bg-blue-500/80 shadow-blue-400/20 text-white"
-                        : "bg-gray-100/80 shadow-gray-200/20 text-gray-900"
-                    }`}
-                  >
-                    {message.type === "bot" ? (
-                      <div
-                        className="markdown-content text-xs sm:text-sm"
-                        dangerouslySetInnerHTML={{
-                          __html: formatText(message.content),
-                        }}
-                      />
-                    ) : (
-                      <div className="text-xs sm:text-sm">
-                        {message.content}
-                      </div>
-                    )}
-                    {message.type === "bot" && message.context && (
-                      <div>
-                        <button
-                          onClick={() => toggleContext(index)}
-                          className="text-xs text-gray-500 mt-1 sm:mt-2 hover:text-gray-700"
-                        >
-                          {showContext === index
-                            ? "Hide context"
-                            : "Show context"}
-                        </button>
-                        {showContext === index && (
-                          <div className="mt-1 sm:mt-2 text-xs text-gray-600 border-t border-gray-200 pt-1 sm:pt-2">
-                            <h4 className="font-medium mb-1">Sources:</h4>
-                            <ul className="list-disc pl-4 text-xs">
-                              {message.context.map((source, i) => (
-                                <li key={i}>{source}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2 mt-1">
-                    {message.type === "user" ? (
-                      <>
-                        <button
-                          onClick={() => copyToClipboard(message.content)}
-                          className="text-slate-600 hover:text-gray-700 transition-colors"
-                          title="Copy message"
-                        >
-                          <Copy className="w-4 h-4 sm:w-4 sm:h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditMessage(message.content)}
-                          className="text-slate-600 hover:text-gray-700 transition-colors"
-                          title="Edit message"
-                        >
-                          <Pencil className="w-4 h-4 sm:w-4 sm:h-4" />
-                        </button>
-                      </>
-                    ) : (
+                  ) : (
+                    <div className="text-xs sm:text-sm">
+                      {message.content}
+                    </div>
+                  )}
+                  {message.type === "bot" && message.context && (
+                    <div>
+                      <button
+                        onClick={() => toggleContext(index)}
+                        className="text-xs text-gray-500 mt-1 sm:mt-2 hover:text-gray-700"
+                      >
+                        {showContext === index
+                          ? "Hide context"
+                          : "Show context"}
+                      </button>
+                      {showContext === index && (
+                        <div className="mt-1 sm:mt-2 text-xs text-gray-600 border-t border-gray-200 pt-1 sm:pt-2">
+                          <h4 className="font-medium mb-1">Sources:</h4>
+                          <ul className="list-disc pl-4 text-xs">
+                            {message.context.map((source, i) => (
+                              <li key={i}>{source}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-1">
+                  {message.type === "user" ? (
+                    <>
                       <button
                         onClick={() => copyToClipboard(message.content)}
                         className="text-slate-600 hover:text-gray-700 transition-colors"
@@ -810,80 +743,180 @@ function App() {
                       >
                         <Copy className="w-4 h-4 sm:w-4 sm:h-4" />
                       </button>
-                    )}
-                  </div>
-                </div>
-                {message.type === "user" && (
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-400/20 flex-shrink-0">
-                    <User className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex items-center gap-2 text-gray-500 animate-fadeIn w-full">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-blue-400 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-400/20">
-                  <Bot className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <div className="flex gap-1 sm:gap-2">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-bounce shadow-lg shadow-blue-400/50"></span>
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s] shadow-lg shadow-blue-400/50"></span>
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s] shadow-lg shadow-blue-400/50"></span>
+                      <button
+                        onClick={() => handleEditMessage(message.content)}
+                        className="text-slate-600 hover:text-gray-700 transition-colors"
+                        title="Edit message"
+                      >
+                        <Pencil className="w-4 h-4 sm:w-4 sm:h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => copyToClipboard(message.content)}
+                      className="text-slate-600 hover:text-gray-700 transition-colors"
+                      title="Copy message"
+                    >
+                      <Copy className="w-4 h-4 sm:w-4 sm:h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
-            {error && (
-              <div className="text-red-500 text-center text-xs sm:text-sm w-full">
-                {error}
+              {message.type === "user" && (
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-400/20 flex-shrink-0">
+                  <User className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
+                </div>
+              )}
+            </div>
+          ))}
+          {isTyping && (
+            <div className="flex items-center gap-2 text-gray-500 animate-fadeIn w-full">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-blue-400 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-400/20">
+                <Bot className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+              <div className="flex gap-1 sm:gap-2">
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-bounce shadow-lg shadow-blue-400/50"></span>
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s] shadow-lg shadow-blue-400/50"></span>
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s] shadow-lg shadow-blue-400/50"></span>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="text-red-500 text-center text-xs sm:text-sm w-full">
+              {error}
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-          {/* Sample Queries */}
-          {messages.length === 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-2 sm:mt-3 mb-4 w-full px-2">
-              {sampleQueries.map((query, index) => (
-                <ShineBorder
-                  className="text-xs sm:text-sm relative flex h-[80%] w-full flex-col items-center justify-center overflow-hidden backdrop-blur-md border md:shadow-xl bg-white/80 text-gray-900 hover:bg-gray-50/80 transition-all duration-300 text-left hover:shadow-lg hover:shadow-blue-400/20 group rounded-lg"
-                  color={["#3B82F6", "#60A5FA", "#93C5FD"]}
-                  key={index}
+        {/* Sample Queries */}
+        {messages.length === 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-2 sm:mt-3 mb-4 w-full">
+            {sampleQueries.map((query, index) => (
+              <ShineBorder
+                className="text-xs sm:text-sm relative flex h-[80%] w-full flex-col items-center justify-center overflow-hidden backdrop-blur-md border md:shadow-xl bg-white/80 text-gray-900 hover:bg-gray-50/80 transition-all duration-300 text-left hover:shadow-lg hover:shadow-blue-400/20 group rounded-lg"
+                color={["#3B82F6", "#60A5FA", "#93C5FD"]}
+                key={index}
+              >
+                <button
+                  onClick={() => handleSampleQuery(query)}
+                  className="p-2 sm:p-4 relative w-full text-left"
                 >
-                  <button
-                    onClick={() => handleSampleQuery(query)}
-                    className="p-2 sm:p-4 relative w-full text-left"
+                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mb-1 sm:mb-2 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                  {query}
+                </button>
+              </ShineBorder>
+            ))}
+          </div>
+        )}
+
+        {/* Input Area */}
+        <form
+          onSubmit={handleSubmit}
+          className="sticky bottom-0 w-full bg-white z-10 pb-4 sm:pb-6"
+        >
+          <div className="relative max-w-4xl mx-auto">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              className="w-full text-xs sm:text-sm backdrop-blur-md bg-gray-50/80 rounded-lg pl-3 sm:pl-4 pr-10 sm:pr-12 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-400/50 border border-gray-200 focus:border-blue-400/50 transition-all duration-300 text-gray-900"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center bg-black hover:bg-gray-800 rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-gray-400/20"
+            >
+              <Send className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* History Sidebar */}
+      {isLoggedIn && (
+        <div
+          className={`fixed inset-y-0 left-0 z-20 bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${
+            showHistorySidebar ? "translate-x-0" : "-translate-x-full"
+          } w-64 sm:w-80 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100`}
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-gray-900">Chat History</h2>
+            <button
+              onClick={() => setShowHistorySidebar(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+          {chatHistory.length === 0 ? (
+            <p className="text-sm text-gray-500">No chat history yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {chatHistory.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-between"
+                >
+                  <div
+                    className="cursor-pointer flex-1 max-w-[80%]"
+                    onClick={() => handleHistoryClick(item)}
                   >
-                    <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mb-1 sm:mb-2 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
-                    {query}
+                    <p className="text-xs font-medium text-gray-900 truncate">
+                      {item.query}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {getFormattedTime(item.timestamp)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteHistory(item.id)}
+                    className="text-red-500 hover:text-red-700 transition-colors p-1"
+                    title="Delete chat"
+                    disabled={isDeleting === item.id}
+                  >
+                    {isDeleting === item.id ? (
+                      <svg
+                        className="w-4 h-4 animate-spin text-red-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z"
+                        />
+                      </svg>
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                   </button>
-                </ShineBorder>
+                </div>
               ))}
             </div>
           )}
-
-          {/* Input Area */}
-          <form
-            onSubmit={handleSubmit}
-            className="sticky bottom-0 w-full px-2 pb-4 sm:pb-6 bg-white"
-          >
-            <div className="relative max-w-4xl mx-auto">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                className="w-full text-xs sm:text-sm backdrop-blur-md bg-gray-50/80 rounded-lg pl-3 sm:pl-4 pr-10 sm:pr-12 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-400/50 border border-gray-200 focus:border-blue-400/50 transition-all duration-300 text-gray-900"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center bg-black hover:bg-gray-800 rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-gray-400/20"
-              >
-                <Send className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-              </button>
-            </div>
-          </form>
         </div>
-      </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
@@ -958,20 +991,33 @@ function App() {
                   {error}
                 </div>
               )}
-              <div className="flex justify-between items-center mb-4"></div>
-              <div className="flex justify-end gap-2 sm:gap-3">
+              <div className="flex justify-between items-center mb-4">
                 <button
                   type="button"
-                  onClick={() => setShowLoginModal(false)}
-                  className="px-2 sm:px-4 py-1 sm:py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-all duration-300 text-xs sm:text-base"
+                  onClick={switchToRegister}
+                  className="text-blue-500 hover:text-blue-700 text-xs sm:text-sm"
                 >
-                  Cancel
+                  Don’t have an account? Register
                 </button>
+              </div>
+              <div className="flex justify-end gap-2 sm:gap-3">
                 <button
                   type="submit"
-                  className="px-2 sm:px-4 py-1 sm:py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-300 text-xs sm:text-base"
+                  disabled={isSubmittingLogin}
+                  className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base flex items-center justify-center gap-2 ${
+                    isSubmittingLogin
+                      ? "bg-gray-600 text-white cursor-not-allowed"
+                      : "bg-black hover:bg-gray-800 text-white"
+                  }`}
                 >
-                  Login
+                  {isSubmittingLogin ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
                 </button>
               </div>
             </form>
@@ -1035,7 +1081,7 @@ function App() {
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Must be at least 6 characters
+                  Must be at least 8 characters
                 </p>
               </div>
               <div className="mb-4 sm:mb-6">
@@ -1071,9 +1117,21 @@ function App() {
               <div className="flex justify-end gap-2 sm:gap-3">
                 <button
                   type="submit"
-                  className="px-2 sm:px-4 py-1 sm:py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all duration-300 text-xs sm:text-base"
+                  disabled={isSubmittingRegister}
+                  className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base flex items-center justify-center gap-2 ${
+                    isSubmittingRegister
+                      ? "bg-blue-700 text-white cursor-not-allowed"
+                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                  }`}
                 >
-                  Register
+                  {isSubmittingRegister ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Registering...
+                    </>
+                  ) : (
+                    "Register"
+                  )}
                 </button>
               </div>
             </form>
