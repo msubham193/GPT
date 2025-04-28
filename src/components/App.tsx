@@ -16,6 +16,9 @@ import {
   LogOut,
   Settings,
   Loader2,
+  Eye,
+  EyeOff,
+  Star,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -50,6 +53,12 @@ interface ChatHistoryItem {
   timestamp: string;
 }
 
+interface RatingFeedback {
+  rating: number;
+  feedback: string;
+  timestamp: string;
+}
+
 // Sample queries for the initial screen
 const sampleQueries = [
   "What is the history of CIME?",
@@ -66,6 +75,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -76,12 +86,14 @@ function App() {
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [showHistorySidebar, setShowHistorySidebar] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
-    null
-  );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
   const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [feedback, setFeedback] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -106,17 +118,14 @@ function App() {
         setChatHistory(JSON.parse(savedHistory));
       }
     } else {
-      setShowRegisterModal(true); // Show register modal if not logged in on app load
+      setShowRegisterModal(true);
     }
   }, []);
 
   // Save chat history to localStorage when it changes
   useEffect(() => {
     if (isLoggedIn && currentUser) {
-      localStorage.setItem(
-        `chatHistory_${currentUser}`,
-        JSON.stringify(chatHistory)
-      );
+      localStorage.setItem(`chatHistory_${currentUser}`, JSON.stringify(chatHistory));
     }
   }, [chatHistory, currentUser, isLoggedIn]);
 
@@ -182,8 +191,7 @@ function App() {
         ...prev,
         {
           type: "bot",
-          content:
-            "I apologize, but I'm having trouble processing your request right now. Please try again later.",
+          content: "I apologize, but I'm having trouble processing your request right now. Please try again later.",
         },
       ]);
     } finally {
@@ -243,10 +251,9 @@ function App() {
       });
 
       if (email === "admin@cime.ac.in") {
-        router.push("/admin"); // Redirect to admin dashboard if admin
+        router.push("/admin");
       }
 
-      // Reset form
       setEmail("");
       setPassword("");
     } catch (err: any) {
@@ -315,7 +322,6 @@ function App() {
         duration: 3000,
       });
 
-      // Reset form and switch to login modal
       setName("");
       setEmail("");
       setPassword("");
@@ -341,8 +347,41 @@ function App() {
     setShowProfileDropdown(false);
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("currentUser");
-    setShowLoginModal(true); // Show login modal after logout
+    setShowLoginModal(true);
     toast.success("Signed out successfully!", {
+      position: "bottom-center",
+      duration: 2000,
+    });
+  };
+
+  // Handle rating and feedback submission
+  const handleRatingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) {
+      toast.error("Please select a rating", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+      return;
+    }
+
+    const newRatingFeedback: RatingFeedback = {
+      rating,
+      feedback: feedback.trim(),
+      timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
+    };
+
+    const existingFeedback = localStorage.getItem(`ratingFeedback_${currentUser}`);
+    const feedbackArray: RatingFeedback[] = existingFeedback
+      ? JSON.parse(existingFeedback)
+      : [];
+    feedbackArray.push(newRatingFeedback);
+    localStorage.setItem(`ratingFeedback_${currentUser}`, JSON.stringify(feedbackArray));
+
+    setRating(0);
+    setFeedback("");
+    setShowRatingModal(false);
+    toast.success("Thank you for your feedback!", {
       position: "bottom-center",
       duration: 2000,
     });
@@ -437,75 +476,55 @@ function App() {
 
   // Format text for rendering (e.g., Markdown-like formatting)
   const formatText = (text: string) => {
-    // First, handle bullet point lists
     let formattedText = text.replace(/^[\s]*[-*][\s]+(.+)$/gm, "<li>$1</li>");
     formattedText = formattedText.replace(/<\/li>\n<li>/g, "</li><li>");
 
-    // Group bullet lists within <ul> tags
     const bulletListRegex = /(&lt;li&gt;.+?&lt;\/li&gt;)+/gs;
     let match;
     while ((match = bulletListRegex.exec(formattedText)) !== null) {
       if (
         !/^<[ou]l>/.test(match[0]) &&
-        !/^<[ou]l>/.test(
-          formattedText.substring(Math.max(0, match.index - 4), match.index)
-        )
+        !/^<[ou]l>/.test(formattedText.substring(Math.max(0, match.index - 4), match.index))
       ) {
         formattedText = formattedText.replace(match[0], `<ul>${match[0]}</ul>`);
       }
     }
 
-    // Handle numbered lists - preserve the original numbers
     formattedText = formattedText.replace(
       /^[\s]*(\d+)\.[\s]+(.+)$/gm,
       (match, number, content) => `<li value="${number}">${content}</li>`
     );
 
-    // Group numbered lists within <ol> tags
-    const numberedListRegex = /(<li>.+?<\?\/li>)+/gs;
+    const numberedListRegex = /(&lt;li&gt;.+?&lt;\/li&gt;)+/gs;
     while ((match = numberedListRegex.exec(formattedText)) !== null) {
       if (
         !/^<[ou]l>/.test(match[0]) &&
-        !/^<[ou]l>/.test(
-          formattedText.substring(Math.max(0, match.index - 4), match.index)
-        )
+        !/^<[ou]l>/.test(formattedText.substring(Math.max(0, match.index - 4), match.index))
       ) {
         formattedText = formattedText.replace(match[0], `<ol>${match[0]}</ol>`);
       }
     }
 
-    // Clean up nested lists
     formattedText = formattedText.replace(/<ul><ul>/g, "<ul>");
     formattedText = formattedText.replace(/<\/ul><\/ul>/g, "</ul>");
     formattedText = formattedText.replace(/<ol><ol>/g, "<ol>");
     formattedText = formattedText.replace(/<\/ol><\/ol>/g, "</ol>");
 
-    // Handle text formatting
-    formattedText = formattedText.replace(
-      /\*\*(.*?)\*\*/g,
-      "<strong>$1</strong>"
-    );
+    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     formattedText = formattedText.replace(/\*(.*?)\*/g, "<em>$1</em>");
 
-    // Handle headings
     formattedText = formattedText.replace(/^# (.*?)$/gm, "<h2>$1</h2>");
     formattedText = formattedText.replace(/^## (.*?)$/gm, "<h3>$1</h3>");
     formattedText = formattedText.replace(/^### (.*?)$/gm, "<h4>$1</h4>");
 
-    // Handle links
     formattedText = formattedText.replace(
       /\[(.*?)\]\((.*?)\)/g,
       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 
-    // Handle code blocks
-    formattedText = formattedText.replace(
-      /```([^`]+)```/g,
-      "<pre><code>$1</code></pre>"
-    );
+    formattedText = formattedText.replace(/```([^`]+)```/g, "<pre><code>$1</code></pre>");
     formattedText = formattedText.replace(/`([^`]+)`/g, "<code>$1</code>");
 
-    // Handle line breaks
     formattedText = formattedText.replace(/([^>])\n([^<])/g, "$1<br />$2");
 
     return formattedText;
@@ -539,6 +558,57 @@ function App() {
     return `${date.toLocaleDateString()} at ${time}`;
   };
 
+  // Group chat history by date
+  const groupChatHistoryByDate = () => {
+    const grouped: { [key: string]: ChatHistoryItem[] } = {};
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    chatHistory.forEach((item) => {
+      const date = new Date(item.timestamp);
+      const isToday =
+        date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+      const isYesterday =
+        date.getDate() === yesterday.getDate() &&
+        date.getMonth() === yesterday.getMonth() &&
+        date.getFullYear() === yesterday.getFullYear();
+
+      let key: string;
+      if (isToday) {
+        key = "Today";
+      } else if (isYesterday) {
+        key = "Yesterday";
+      } else {
+        key = date.toLocaleDateString();
+      }
+
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(item);
+    });
+
+    const sortedKeys = Object.keys(grouped).sort((a, b) => {
+      if (a === "Today") return -1;
+      if (b === "Today") return 1;
+      if (a === "Yesterday") return -1;
+      if (b === "Yesterday") return 1;
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return sortedKeys.map((key) => ({
+      date: key,
+      items: grouped[key].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      ),
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-white text-gray-900 font-poppins flex flex-col">
       <Toaster />
@@ -549,7 +619,7 @@ function App() {
             {isLoggedIn && (
               <button
                 onClick={toggleHistorySidebar}
-                className="flex items-center gap-1 sm:gap-2 bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 sm:px-2 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
+                className="flex items-center gap-1 sm:gap-2 bg-black hover:bg-gray-800 text-white px-2 py-1 sm:px-2 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
               >
                 <AlignJustify className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden xs:inline">History</span>
@@ -576,7 +646,7 @@ function App() {
               <div className="relative">
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center gap-1 sm:gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2 transition-all duration-300 text-xs sm:text-base"
+                  className="flex items-center gap-1 sm:gap-2 rounded-full bg-black hover:bg-gray-800 text-white px-2 py-1 sm:px-4 sm:py-2 transition-all duration-300 text-xs sm:text-base"
                 >
                   {currentUser.slice(0, 1).toUpperCase()}
                 </button>
@@ -595,6 +665,13 @@ function App() {
                         Admin Dashboard
                       </Link>
                     )}
+                    <button
+                      onClick={() => setShowRatingModal(true)}
+                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <Star className="w-4 h-4" />
+                      Rating & Feedback
+                    </button>
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
@@ -629,14 +706,14 @@ function App() {
                       duration: 2000,
                     });
                   }}
-                  className="flex items-center gap-1 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
+                  className="flex items-center gap-1 sm:gap-2 bg-black hover:bg-gray-800 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
                 >
                   <LogIn className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden xs:inline">Login</span>
                 </button>
                 <button
                   onClick={() => setShowRegisterModal(true)}
-                  className="flex items-center gap-1 sm:gap-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
+                  className="flex items-center gap-1 sm:gap-2 bg-black hover:bg-gray-800 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base"
                 >
                   <UserPlus className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden xs:inline">Register</span>
@@ -667,8 +744,7 @@ function App() {
                 />
               </div>
               <h2 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent px-2">
-                Welcome to College of IT & Management Education Bhubaneswar
-                GPT
+                Welcome to College of IT & Management Education Bhubaneswar GPT
               </h2>
             </div>
           )}
@@ -706,9 +782,7 @@ function App() {
                       }}
                     />
                   ) : (
-                    <div className="text-xs sm:text-sm">
-                      {message.content}
-                    </div>
+                    <div className="text-xs sm:text-sm">{message.content}</div>
                   )}
                   {message.type === "bot" && message.context && (
                     <div>
@@ -716,9 +790,7 @@ function App() {
                         onClick={() => toggleContext(index)}
                         className="text-xs text-gray-500 mt-1 sm:mt-2 hover:text-gray-700"
                       >
-                        {showContext === index
-                          ? "Hide context"
-                          : "Show context"}
+                        {showContext === index ? "Hide context" : "Show context"}
                       </button>
                       {showContext === index && (
                         <div className="mt-1 sm:mt-2 text-xs text-gray-600 border-t border-gray-200 pt-1 sm:pt-2">
@@ -782,9 +854,7 @@ function App() {
             </div>
           )}
           {error && (
-            <div className="text-red-500 text-center text-xs sm:text-sm w-full">
-              {error}
-            </div>
+            <div className="text-red-500 text-center text-xs sm:text-sm w-full">{error}</div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -811,10 +881,7 @@ function App() {
         )}
 
         {/* Input Area */}
-        <form
-          onSubmit={handleSubmit}
-          className="sticky bottom-0 w-full bg-white z-10 pb-4 sm:pb-6"
-        >
+        <form onSubmit={handleSubmit} className="sticky bottom-0 w-full bg-white z-10 pb-4 sm:pb-6">
           <div className="relative max-w-4xl mx-auto">
             <input
               type="text"
@@ -842,75 +909,47 @@ function App() {
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-gray-900">Chat History</h2>
-            <button
-              onClick={() => setShowHistorySidebar(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+            <button onClick={() => setShowHistorySidebar(false)} className="text-gray-500 hover:text-gray-700">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
           {chatHistory.length === 0 ? (
             <p className="text-sm text-gray-500">No chat history yet.</p>
           ) : (
-            <div className="space-y-3">
-              {chatHistory.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-between"
-                >
-                  <div
-                    className="cursor-pointer flex-1 max-w-[80%]"
-                    onClick={() => handleHistoryClick(item)}
-                  >
-                    <p className="text-xs font-medium text-gray-900 truncate">
-                      {item.query}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getFormattedTime(item.timestamp)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteHistory(item.id)}
-                    className="text-red-500 hover:text-red-700 transition-colors p-1"
-                    title="Delete chat"
-                    disabled={isDeleting === item.id}
-                  >
-                    {isDeleting === item.id ? (
-                      <svg
-                        className="w-4 h-4 animate-spin text-red-500"
-                        fill="none"
-                        viewBox="0 0 24 24"
+            <div className="space-y-4">
+              {groupChatHistoryByDate().map((group) => (
+                <div key={group.date}>
+                  <h3 className="text-sm font-bold text-gray-900 mb-2">{group.date}</h3>
+                  <div className="space-y-2">
+                    {group.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-between"
                       >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z"
-                        />
-                      </svg>
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                        <div
+                          className="cursor-pointer flex-1 max-w-[80%]"
+                          onClick={() => handleHistoryClick(item)}
+                        >
+                          <p className="text-xs font-medium text-gray-900 truncate">{item.query}</p>
+                          <p className="text-xs text-gray-500">{getFormattedTime(item.timestamp)}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteHistory(item.id)}
+                          className="text-red-500 hover:bg-gray-800 hover:text-red-400 transition-colors p-1 rounded"
+                          title="Delete chat"
+                          disabled={isDeleting === item.id}
+                        >
+                          {isDeleting === item.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -922,9 +961,7 @@ function App() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 p-4">
           <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-xs sm:max-w-md">
-            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">
-              Confirm Deletion
-            </h3>
+            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">Confirm Deletion</h3>
             <p className="text-xs sm:text-sm text-gray-700 mb-4 sm:mb-6">
               Are you sure you want to delete this chat history?
             </p>
@@ -950,9 +987,7 @@ function App() {
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
           <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
-            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">
-              Login
-            </h3>
+            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">Login</h3>
             <form onSubmit={handleLogin}>
               <div className="mb-3 sm:mb-4">
                 <label
@@ -970,7 +1005,7 @@ function App() {
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
+              <div className="mb-4 sm:mb-6 relative">
                 <label
                   htmlFor="password"
                   className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
@@ -978,18 +1013,23 @@ function App() {
                   Password
                 </label>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-xs sm:text-base"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-xs sm:text-base pr-10"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform translate-y-1/4 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               {error && (
-                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">
-                  {error}
-                </div>
+                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">{error}</div>
               )}
               <div className="flex justify-between items-center mb-4">
                 <button
@@ -1029,9 +1069,7 @@ function App() {
       {showRegisterModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
           <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
-            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">
-              Create an Account
-            </h3>
+            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">Create an Account</h3>
             <form onSubmit={handleRegister}>
               <div className="mb-3 sm:mb-4">
                 <label
@@ -1065,7 +1103,7 @@ function App() {
                   required
                 />
               </div>
-              <div className="mb-3 sm:mb-4">
+              <div className="mb-3 sm:mb-4 relative">
                 <label
                   htmlFor="register-password"
                   className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
@@ -1073,18 +1111,23 @@ function App() {
                   Password
                 </label>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="register-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-xs sm:text-base"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-xs sm:text-base pr-10"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Must be at least 8 characters
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform translate-y-1/4 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
               </div>
-              <div className="mb-4 sm:mb-6">
+              <div className="mb-4 sm:mb-6 relative">
                 <label
                   htmlFor="confirm-password"
                   className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
@@ -1092,18 +1135,23 @@ function App() {
                   Confirm Password
                 </label>
                 <input
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   id="confirm-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-xs sm:text-base"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-xs sm:text-base pr-10"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform translate-y-1/4 text-gray-500 hover:text-gray-700"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               {error && (
-                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">
-                  {error}
-                </div>
+                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">{error}</div>
               )}
               <div className="flex justify-between items-center mb-4">
                 <button
@@ -1120,8 +1168,8 @@ function App() {
                   disabled={isSubmittingRegister}
                   className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg transition-all duration-300 text-xs sm:text-base flex items-center justify-center gap-2 ${
                     isSubmittingRegister
-                      ? "bg-blue-700 text-white cursor-not-allowed"
-                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                      ? "bg-gray-600 text-white cursor-not-allowed"
+                      : "bg-black hover:bg-gray-800 text-white"
                   }`}
                 >
                   {isSubmittingRegister ? (
@@ -1139,11 +1187,81 @@ function App() {
         </div>
       )}
 
+      {/* Rating & Feedback Modal */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
+            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">Rating & Feedback</h3>
+            <form onSubmit={handleRatingSubmit}>
+              <div className="mb-3 sm:mb-4">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                  Rate your experience
+                </label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className={`w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center ${
+                        star <= rating ? "text-yellow-400" : "text-gray-300"
+                      } hover:text-yellow-500 transition-colors`}
+                    >
+                      <Star
+                        className="w-5 h-5 sm:w-6 sm:h-6"
+                        fill={star <= rating ? "currentColor" : "none"}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label
+                  htmlFor="feedback"
+                  className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+                >
+                  Feedback (optional)
+                </label>
+                <textarea
+                  id="feedback"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-xs sm:text-base resize-none h-24"
+                  placeholder="Share your thoughts..."
+                />
+              </div>
+              {error && (
+                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">{error}</div>
+              )}
+              <div className="flex justify-end gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRatingModal(false);
+                    setRating(0);
+                    setFeedback("");
+                    setError(null);
+                  }}
+                  className="px-2 sm:px-4 py-1 sm:py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-all duration-300 text-xs sm:text-base"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-2 sm:px-4 py-1 sm:py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-300 text-xs sm:text-base"
+                >
+                  Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Styles */}
       <style jsx global>{`
         .custom-gradient-shadow {
-          box-shadow: 0 4px 8px rgba(55, 65, 81, 0.3),
-            0 6px 12px rgba(209, 213, 219, 0.2);
+          box-shadow: 0 4px 8px rgba(55, 65, 81, 0.3), 0 6px 12px rgba(209, 213, 219, 0.2);
         }
 
         @media (min-width: 475px) {
