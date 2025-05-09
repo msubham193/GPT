@@ -86,7 +86,9 @@ function App() {
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [showHistorySidebar, setShowHistorySidebar] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null
+  );
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
   const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
@@ -125,7 +127,10 @@ function App() {
   // Save chat history to localStorage when it changes
   useEffect(() => {
     if (isLoggedIn && currentUser) {
-      localStorage.setItem(`chatHistory_${currentUser}`, JSON.stringify(chatHistory));
+      localStorage.setItem(
+        `chatHistory_${currentUser}`,
+        JSON.stringify(chatHistory)
+      );
     }
   }, [chatHistory, currentUser, isLoggedIn]);
 
@@ -191,7 +196,8 @@ function App() {
         ...prev,
         {
           type: "bot",
-          content: "I apologize, but I'm having trouble processing your request right now. Please try again later.",
+          content:
+            "I apologize, but I'm having trouble processing your request right now. Please try again later.",
         },
       ]);
     } finally {
@@ -371,12 +377,17 @@ function App() {
       timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
     };
 
-    const existingFeedback = localStorage.getItem(`ratingFeedback_${currentUser}`);
+    const existingFeedback = localStorage.getItem(
+      `ratingFeedback_${currentUser}`
+    );
     const feedbackArray: RatingFeedback[] = existingFeedback
       ? JSON.parse(existingFeedback)
       : [];
     feedbackArray.push(newRatingFeedback);
-    localStorage.setItem(`ratingFeedback_${currentUser}`, JSON.stringify(feedbackArray));
+    localStorage.setItem(
+      `ratingFeedback_${currentUser}`,
+      JSON.stringify(feedbackArray)
+    );
 
     setRating(0);
     setFeedback("");
@@ -484,7 +495,9 @@ function App() {
     while ((match = bulletListRegex.exec(formattedText)) !== null) {
       if (
         !/^<[ou]l>/.test(match[0]) &&
-        !/^<[ou]l>/.test(formattedText.substring(Math.max(0, match.index - 4), match.index))
+        !/^<[ou]l>/.test(
+          formattedText.substring(Math.max(0, match.index - 4), match.index)
+        )
       ) {
         formattedText = formattedText.replace(match[0], `<ul>${match[0]}</ul>`);
       }
@@ -499,7 +512,9 @@ function App() {
     while ((match = numberedListRegex.exec(formattedText)) !== null) {
       if (
         !/^<[ou]l>/.test(match[0]) &&
-        !/^<[ou]l>/.test(formattedText.substring(Math.max(0, match.index - 4), match.index))
+        !/^<[ou]l>/.test(
+          formattedText.substring(Math.max(0, match.index - 4), match.index)
+        )
       ) {
         formattedText = formattedText.replace(match[0], `<ol>${match[0]}</ol>`);
       }
@@ -510,7 +525,10 @@ function App() {
     formattedText = formattedText.replace(/<ol><ol>/g, "<ol>");
     formattedText = formattedText.replace(/<\/ol><\/ol>/g, "</ol>");
 
-    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    formattedText = formattedText.replace(
+      /\*\*(.*?)\*\*/g,
+      "<strong>$1</strong>"
+    );
     formattedText = formattedText.replace(/\*(.*?)\*/g, "<em>$1</em>");
 
     formattedText = formattedText.replace(/^# (.*?)$/gm, "<h2>$1</h2>");
@@ -522,7 +540,10 @@ function App() {
       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 
-    formattedText = formattedText.replace(/```([^`]+)```/g, "<pre><code>$1</code></pre>");
+    formattedText = formattedText.replace(
+      /```([^`]+)```/g,
+      "<pre><code>$1</code></pre>"
+    );
     formattedText = formattedText.replace(/`([^`]+)`/g, "<code>$1</code>");
 
     formattedText = formattedText.replace(/([^>])\n([^<])/g, "$1<br />$2");
@@ -604,7 +625,8 @@ function App() {
     return sortedKeys.map((key) => ({
       date: key,
       items: grouped[key].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       ),
     }));
   };
@@ -679,13 +701,7 @@ function App() {
                       <LogOut className="w-4 h-4" />
                       Sign Out
                     </button>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Settings
-                    </button>
+
                     <Link
                       href="/pro"
                       className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
@@ -744,7 +760,7 @@ function App() {
                 />
               </div>
               <h2 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent px-2">
-                Welcome to College of IT & Management Education Bhubaneswar GPT
+                Welcome to College of IT & Management Education GPT
               </h2>
             </div>
           )}
@@ -790,7 +806,9 @@ function App() {
                         onClick={() => toggleContext(index)}
                         className="text-xs text-gray-500 mt-1 sm:mt-2 hover:text-gray-700"
                       >
-                        {showContext === index ? "Hide context" : "Show context"}
+                        {showContext === index
+                          ? "Hide context"
+                          : "Show context"}
                       </button>
                       {showContext === index && (
                         <div className="mt-1 sm:mt-2 text-xs text-gray-600 border-t border-gray-200 pt-1 sm:pt-2">
@@ -854,7 +872,9 @@ function App() {
             </div>
           )}
           {error && (
-            <div className="text-red-500 text-center text-xs sm:text-sm w-full">{error}</div>
+            <div className="text-red-500 text-center text-xs sm:text-sm w-full">
+              {error}
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -881,7 +901,10 @@ function App() {
         )}
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} className="sticky bottom-0 w-full bg-white z-10 pb-4 sm:pb-6">
+        <form
+          onSubmit={handleSubmit}
+          className="sticky bottom-0 w-full bg-white z-10 pb-4 sm:pb-6"
+        >
           <div className="relative max-w-4xl mx-auto">
             <input
               type="text"
@@ -909,9 +932,22 @@ function App() {
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-gray-900">Chat History</h2>
-            <button onClick={() => setShowHistorySidebar(false)} className="text-gray-500 hover:text-gray-700">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <button
+              onClick={() => setShowHistorySidebar(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -921,7 +957,9 @@ function App() {
             <div className="space-y-4">
               {groupChatHistoryByDate().map((group) => (
                 <div key={group.date}>
-                  <h3 className="text-sm font-bold text-gray-900 mb-2">{group.date}</h3>
+                  <h3 className="text-sm font-bold text-gray-900 mb-2">
+                    {group.date}
+                  </h3>
                   <div className="space-y-2">
                     {group.items.map((item) => (
                       <div
@@ -932,8 +970,12 @@ function App() {
                           className="cursor-pointer flex-1 max-w-[80%]"
                           onClick={() => handleHistoryClick(item)}
                         >
-                          <p className="text-xs font-medium text-gray-900 truncate">{item.query}</p>
-                          <p className="text-xs text-gray-500">{getFormattedTime(item.timestamp)}</p>
+                          <p className="text-xs font-medium text-gray-900 truncate">
+                            {item.query}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {getFormattedTime(item.timestamp)}
+                          </p>
                         </div>
                         <button
                           onClick={() => handleDeleteHistory(item.id)}
@@ -961,7 +1003,9 @@ function App() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 p-4">
           <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-xs sm:max-w-md">
-            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">Confirm Deletion</h3>
+            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">
+              Confirm Deletion
+            </h3>
             <p className="text-xs sm:text-sm text-gray-700 mb-4 sm:mb-6">
               Are you sure you want to delete this chat history?
             </p>
@@ -987,7 +1031,9 @@ function App() {
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
           <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
-            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">Login</h3>
+            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">
+              Login
+            </h3>
             <form onSubmit={handleLogin}>
               <div className="mb-3 sm:mb-4">
                 <label
@@ -1025,11 +1071,17 @@ function App() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform translate-y-1/4 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
               {error && (
-                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">{error}</div>
+                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">
+                  {error}
+                </div>
               )}
               <div className="flex justify-between items-center mb-4">
                 <button
@@ -1069,7 +1121,9 @@ function App() {
       {showRegisterModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
           <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
-            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">Create an Account</h3>
+            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">
+              Create an Account
+            </h3>
             <form onSubmit={handleRegister}>
               <div className="mb-3 sm:mb-4">
                 <label
@@ -1123,9 +1177,15 @@ function App() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform translate-y-1/4 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
-                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Must be at least 8 characters
+                </p>
               </div>
               <div className="mb-4 sm:mb-6 relative">
                 <label
@@ -1147,11 +1207,17 @@ function App() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 transform translate-y-1/4 text-gray-500 hover:text-gray-700"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
               {error && (
-                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">{error}</div>
+                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">
+                  {error}
+                </div>
               )}
               <div className="flex justify-between items-center mb-4">
                 <button
@@ -1191,7 +1257,9 @@ function App() {
       {showRatingModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-20 p-4">
           <div className="bg-white rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-xs sm:max-w-md">
-            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">Rating & Feedback</h3>
+            <h3 className="text-base sm:text-xl font-bold mb-3 sm:mb-4">
+              Rating & Feedback
+            </h3>
             <form onSubmit={handleRatingSubmit}>
               <div className="mb-3 sm:mb-4">
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
@@ -1231,7 +1299,9 @@ function App() {
                 />
               </div>
               {error && (
-                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">{error}</div>
+                <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4">
+                  {error}
+                </div>
               )}
               <div className="flex justify-end gap-2 sm:gap-3">
                 <button
@@ -1261,7 +1331,8 @@ function App() {
       {/* Styles */}
       <style jsx global>{`
         .custom-gradient-shadow {
-          box-shadow: 0 4px 8px rgba(55, 65, 81, 0.3), 0 6px 12px rgba(209, 213, 219, 0.2);
+          box-shadow: 0 4px 8px rgba(55, 65, 81, 0.3),
+            0 6px 12px rgba(209, 213, 219, 0.2);
         }
 
         @media (min-width: 475px) {
