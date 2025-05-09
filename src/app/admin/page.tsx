@@ -590,9 +590,17 @@ const AdminDashboard = () => {
           <ul className="space-y-2">
             {[
               { name: "Dashboard", icon: Home, tab: "dashboard" as const },
-              { name: "Knowledge Base", icon: BookOpen, tab: "knowledge" as const },
+              {
+                name: "Knowledge Base",
+                icon: BookOpen,
+                tab: "knowledge" as const,
+              },
               { name: "User Charts", icon: Users, tab: "charts" as const },
-              { name: "Sample Questions", icon: HelpCircle, tab: "questions" as const },
+              {
+                name: "Sample Questions",
+                icon: HelpCircle,
+                tab: "questions" as const,
+              },
             ].map((item) => (
               <li key={item.tab}>
                 <button
@@ -748,8 +756,6 @@ const AdminDashboard = () => {
               </div>
             </div>
           )}
-
-          
 
           {/* Knowledge Base Tab */}
           {activeTab === "knowledge" && (
@@ -933,13 +939,13 @@ const AdminDashboard = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {registeredUsers.length > 0 ? (
-                          registeredUsers.map((user) => (
+                          registeredUsers.map((user, index) => (
                             <tr
                               key={user.id}
                               className="hover:bg-gray-50 transition-colors"
                             >
                               <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                                {user.id}
+                                {index + 1}
                               </td>
                               <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
                                 {user.name}
@@ -1193,8 +1199,7 @@ const AdminDashboard = () => {
               </div>
             </div>
           )}
-           
-          
+
           {/* Confirm Delete Modal */}
           {showConfirmDeleteModal && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
