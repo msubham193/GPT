@@ -14,9 +14,13 @@ import {
   BookOpen,
   Users,
   HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  Star,
 } from "lucide-react";
 import Image from "next/image";
 import toast, { Toaster } from "react-hot-toast";
+import Link from "next/link";
 
 interface PdfFile {
   id: string;
@@ -33,7 +37,7 @@ interface UserVisit {
 
 interface UserActivity {
   email: string;
-  action: "login" | "query" | "upload" | "delete" | "rebuild";
+  action: "login" | "query" | "upload" | "delete" | "rebuild" | "signup";
   timestamp: string;
 }
 
@@ -50,6 +54,16 @@ interface SampleQuestion {
   created_at: string;
 }
 
+interface UserFeedback {
+  id: string;
+  user_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
+const ITEMS_PER_PAGE = 5;
+
 const AdminDashboard = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +79,7 @@ const AdminDashboard = () => {
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [sampleQuestions, setSampleQuestions] = useState<SampleQuestion[]>([]);
+  const [userFeedback, setUserFeedback] = useState<UserFeedback[]>([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<
@@ -76,8 +91,13 @@ const AdminDashboard = () => {
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<
     string | null
   >(null);
+  const [showConfirmDeleteQuestionModal, setShowConfirmDeleteQuestionModal] =
+    useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
+  const [registeredPage, setRegisteredPage] = useState(1);
+  const [visitsPage, setVisitsPage] = useState(1);
+  const [activitiesPage, setActivitiesPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
@@ -92,6 +112,48 @@ const AdminDashboard = () => {
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  // Fetch sample questions from backend
+  const fetchSampleQuestions = async () => {
+    try {
+      const response = await fetch("/api/sample-questions", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to fetch sample questions");
+      setSampleQuestions(data || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch sample questions");
+      toast.error(err.message || "Failed to fetch sample questions", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+      setSampleQuestions([]);
+    }
+  };
+
+  // Fetch user feedback from backend
+  const fetchUserFeedback = async () => {
+    try {
+      const response = await fetch("/api/user-feedback", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to fetch user feedback");
+      setUserFeedback(data || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch user feedback");
+      toast.error(err.message || "Failed to fetch user feedback", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+      setUserFeedback([]);
+    }
   };
 
   useEffect(() => {
@@ -125,89 +187,35 @@ const AdminDashboard = () => {
           duration: 2000,
         });
 
-        const storedVisits = JSON.parse(
-          localStorage.getItem("userVisits") || "[]"
-        );
-        const visits = data.data.map((user: RegisteredUser) => {
-          const existingVisit = storedVisits.find(
-            (visit: UserVisit) => visit.email === user.email
-          );
-          return (
-            existingVisit || {
-              email: user.email,
-              visitCount: 1,
-              lastVisit: new Date()
-                .toISOString()
-                .slice(0, 16)
-                .replace("T", " "),
-            }
-          );
-        });
+        // Dynamically generate user visits
+        const visits = data.data.map((user: RegisteredUser) => ({
+          email: user.email,
+          visitCount: Math.floor(Math.random() * 10) + 1, // Simulated visit count
+          lastVisit: new Date().toISOString().slice(0, 16).replace("T", " "),
+        }));
         setUserVisits(visits);
         localStorage.setItem("userVisits", JSON.stringify(visits));
 
-        const storedActivities = JSON.parse(
-          localStorage.getItem("userActivities") || "[]"
-        );
-        const activities = data.data.map((user: RegisteredUser) => {
-          const existingActivity = storedActivities.find(
-            (activity: UserActivity) =>
-              activity.email === user.email && activity.action === "login"
-          );
-          return (
-            existingActivity || {
-              email: user.email,
-              action: "login" as const,
-              timestamp: new Date()
-                .toISOString()
-                .slice(0, 16)
-                .replace("T", " "),
-            }
-          );
-        });
-        const allActivities = [
-          ...activities,
-          ...storedActivities.filter(
-            (activity: UserActivity) => activity.action !== "login"
-          ),
-        ];
-        setUserActivities(allActivities);
-        localStorage.setItem("userActivities", JSON.stringify(allActivities));
+        // Dynamically generate user activities (login and signup)
+        const activities = data.data.flatMap((user: RegisteredUser) => [
+          {
+            email: user.email,
+            action: "signup" as const,
+            timestamp: user.created_at,
+          },
+          {
+            email: user.email,
+            action: "login" as const,
+            timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+          },
+        ]);
+        setUserActivities(activities);
+        localStorage.setItem("userActivities", JSON.stringify(activities));
 
-        const storedQuestions = JSON.parse(
-          localStorage.getItem("sampleQuestions") || "[]"
-        );
-        if (storedQuestions.length === 0) {
-          const initialQuestions = [
-            {
-              id: "1",
-              question: "What is the mission of CIME?",
-              created_at: new Date().toISOString(),
-            },
-            {
-              id: "2",
-              question: "How can I contact the support team?",
-              created_at: new Date().toISOString(),
-            },
-            {
-              id: "3",
-              question: "What courses are offered?",
-              created_at: new Date().toISOString(),
-            },
-            {
-              id: "4",
-              question: "What are the admission requirements?",
-              created_at: new Date().toISOString(),
-            },
-          ];
-          setSampleQuestions(initialQuestions);
-          localStorage.setItem(
-            "sampleQuestions",
-            JSON.stringify(initialQuestions)
-          );
-        } else {
-          setSampleQuestions(storedQuestions);
-        }
+        // Fetch sample questions
+        await fetchSampleQuestions();
+        // Fetch user feedback
+        await fetchUserFeedback();
       } catch (err: any) {
         setError(err.message || "Failed to fetch users");
         toast.error(err.message || "Failed to fetch users", {
@@ -238,12 +246,10 @@ const AdminDashboard = () => {
         });
         if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
-        const documentNames: string[] = await response.json();
-        console.log("Fetched document names:", documentNames);
-        const documents: PdfFile[] = documentNames.map((name) => ({
-          id: name,
-          name,
-          uploadDate: new Date().toISOString().slice(0, 16).replace("T", " "),
+        const documentNames = await response.json();
+        const documents = documentNames.map((name: { id: string }) => ({
+          id: name.id,
+          name: name.id,
         }));
         setPdfFiles(documents);
         setError(null);
@@ -271,6 +277,8 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (isLoggedIn && activeTab === "knowledge") {
       fetchDocuments();
+    } else if (isLoggedIn && activeTab === "questions") {
+      fetchSampleQuestions();
     }
   }, [isLoggedIn, activeTab]);
 
@@ -299,7 +307,6 @@ const AdminDashboard = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      console.log("Starting upload for files:", files.length);
       setIsUploading(true);
       setUploadStatus("uploading");
       setError(null);
@@ -392,7 +399,6 @@ const AdminDashboard = () => {
   };
 
   const handleDeletePdf = async (id: string) => {
-    console.log("Deleting document from frontend:", id);
     setShowConfirmDeleteModal(null);
     setDeletingId(id);
 
@@ -422,7 +428,8 @@ const AdminDashboard = () => {
             | "rebuild"
             | "login"
             | "query"
-            | "delete",
+            | "delete"
+            | "signup",
         }))
       );
       localStorage.setItem("userActivities", JSON.stringify(newActivities));
@@ -450,7 +457,9 @@ const AdminDashboard = () => {
   };
 
   const handleOpenPdf = async (id: string) => {
-    const pdfUrl = `/api/documents/${encodeURIComponent(id)}`;
+    const pdfUrl = `http://13.234.110.97:8000/documents/${encodeURIComponent(
+      id
+    )}/pdf`;
     try {
       const response = await fetch(pdfUrl, { method: "HEAD" });
       if (!response.ok) throw new Error("PDF not found");
@@ -464,7 +473,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddQuestion = () => {
+  const handleAddQuestion = async () => {
     if (!newQuestion.trim()) {
       toast.error("Question cannot be empty", {
         position: "bottom-center",
@@ -472,38 +481,138 @@ const AdminDashboard = () => {
       });
       return;
     }
-    const newQ = {
-      id: Date.now().toString(),
-      question: newQuestion,
-      created_at: new Date().toISOString(),
-    };
-    const updatedQuestions = [...sampleQuestions, newQ];
-    setSampleQuestions(updatedQuestions);
-    localStorage.setItem("sampleQuestions", JSON.stringify(updatedQuestions));
-    setNewQuestion("");
-    toast.success("Question added successfully!", {
-      position: "bottom-center",
-      duration: 2000,
-    });
+
+    if (sampleQuestions.length >= 4) {
+      toast.error("Maximum 4 questions allowed", {
+        position: "bottom-center",
+        duration: 2000,
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/sample-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: newQuestion }),
+      });
+      const data = await response.json();
+
+      if (!response.ok)
+        throw new Error(data.error || "Failed to add sample question");
+
+      const newQ: SampleQuestion = data;
+      setSampleQuestions((prev) => [...prev, newQ]);
+      setNewQuestion("");
+      toast.success("Question added successfully!", {
+        position: "bottom-center",
+        duration: 2000,
+      });
+    } catch (err: any) {
+      setError(err.message || "Failed to add sample question");
+      toast.error(err.message || "Failed to add sample question", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+    }
   };
 
   const handleDeleteQuestion = (id: string) => {
-    const updatedQuestions = sampleQuestions.filter((q) => q.id !== id);
-    setSampleQuestions(updatedQuestions);
-    localStorage.setItem("sampleQuestions", JSON.stringify(updatedQuestions));
-    toast.success("Question deleted successfully!", {
-      position: "bottom-center",
-      duration: 2000,
-    });
+    setShowConfirmDeleteQuestionModal(id);
+  };
+
+  const confirmDeleteQuestion = async (id: string) => {
+    const questionText = sampleQuestions.find((q) => q.id === id)?.question;
+    setShowConfirmDeleteQuestionModal(null);
+
+    try {
+      const response = await fetch(`/api/sample-questions/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to delete sample question");
+
+      setSampleQuestions((prev) => prev.filter((q) => q.id !== id));
+      toast.success(
+        data.message || `Question "${questionText}" deleted successfully!`,
+        {
+          position: "bottom-center",
+          duration: 2000,
+        }
+      );
+    } catch (err: any) {
+      setError(err.message || "Failed to delete sample question");
+      toast.error(err.message || "Failed to delete sample question", {
+        position: "bottom-center",
+        duration: 3000,
+      });
+      await fetchSampleQuestions();
+    }
+  };
+
+  const cancelDeleteQuestion = () => {
+    setShowConfirmDeleteQuestionModal(null);
+  };
+
+  // Calculate average rating for a user
+  const getUserAverageRating = (userId: string): number => {
+    const userRatings = userFeedback
+      .filter((fb) => fb.user_id === userId)
+      .map((fb) => fb.rating);
+    if (userRatings.length === 0) return 0;
+    const average =
+      userRatings.reduce((sum, rating) => sum + rating, 0) / userRatings.length;
+    return Math.round(average); // Round to nearest integer for star display
+  };
+
+  // Pagination logic
+  const getPaginatedData = <T,>(data: T[], page: number): T[] => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return data.slice(start, start + ITEMS_PER_PAGE);
   };
 
   const totalVisitors = registeredUsers.length;
   const totalDocs = pdfFiles.length;
-  const totalPdfs = pdfFiles.length;
-  const userGrowth = totalVisitors > 0 ? (totalVisitors / 1) * 100 : 0;
   const totalQueries = userActivities.filter(
     (a) => a.action === "query"
   ).length;
+  const userGrowth = totalVisitors * 1; // 1% per user
+
+  // Pagination controls
+  const PaginationControls = ({
+    page,
+    setPage,
+    totalItems,
+  }: {
+    page: number;
+    setPage: (page: number) => void;
+    totalItems: number;
+  }) => {
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    return (
+      <div className="flex justify-center items-center gap-4 mt-4">
+        <button
+          onClick={() => setPage(page - 1)}
+          disabled={page === 1}
+          className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <span className="text-sm text-gray-600">
+          Page {page} of {totalPages}
+        </span>
+        <button
+          onClick={() => setPage(page + 1)}
+          disabled={page === totalPages}
+          className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+    );
+  };
 
   if (!isLoggedIn) return null;
 
@@ -562,6 +671,21 @@ const AdminDashboard = () => {
             padding-right: 10px;
             font-weight: bold;
             text-align: left;
+          }
+          .mobile-table td:nth-of-type(1):before {
+            content: "ID";
+          }
+          .mobile-table td:nth-of-type(2):before {
+            content: "Name";
+          }
+          .mobile-table td:nth-of-type(3):before {
+            content: "Email";
+          }
+          .mobile-table td:nth-of-type(4):before {
+            content: "Created At";
+          }
+          .mobile-table td:nth-of-type(5):before {
+            content: "Rating";
           }
         }
       `}</style>
@@ -817,9 +941,6 @@ const AdminDashboard = () => {
                             Document ID
                           </th>
                           <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Upload Date
-                          </th>
-                          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Action
                           </th>
                         </tr>
@@ -831,16 +952,15 @@ const AdminDashboard = () => {
                             className="hover:bg-gray-50 transition-colors"
                           >
                             <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                              <button
-                                onClick={() => handleOpenPdf(file.id)}
+                              <Link
+                                href={`http://13.234.110.97:8000/documents/${encodeURIComponent(
+                                  file.id
+                                )}/pdf`}
                                 className="text-blue-600 hover:underline focus:outline-none"
                                 title={`Open ${file.name}`}
                               >
                                 {file.name}
-                              </button>
-                            </td>
-                            <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                              {file.uploadDate || "N/A"}
+                              </Link>
                             </td>
                             <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
                               <button
@@ -935,33 +1055,66 @@ const AdminDashboard = () => {
                           <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Created At
                           </th>
+                          <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Rating
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {registeredUsers.length > 0 ? (
-                          registeredUsers.map((user, index) => (
-                            <tr
-                              key={user.id}
-                              className="hover:bg-gray-50 transition-colors"
-                            >
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                                {index + 1}
-                              </td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                                {user.name}
-                              </td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                                {user.email}
-                              </td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                                {formatDate(user.created_at)}
-                              </td>
-                            </tr>
-                          ))
+                        {getPaginatedData(registeredUsers, registeredPage)
+                          .length > 0 ? (
+                          getPaginatedData(registeredUsers, registeredPage).map(
+                            (user, index) => {
+                              const averageRating = getUserAverageRating(
+                                user.id
+                              );
+                              return (
+                                <tr
+                                  key={user.id}
+                                  className="hover:bg-gray-50 transition-colors"
+                                >
+                                  <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                                    {(registeredPage - 1) * ITEMS_PER_PAGE +
+                                      index +
+                                      1}
+                                  </td>
+                                  <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                                    {user.name}
+                                  </td>
+                                  <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                    {user.email}
+                                  </td>
+                                  <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                    {formatDate(user.created_at)}
+                                  </td>
+                                  <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                    {averageRating > 0 ? (
+                                      <div className="flex gap-1">
+                                        {Array.from({ length: 5 }).map(
+                                          (_, i) => (
+                                            <Star
+                                              key={i}
+                                              className={`w-4 h-4 ${
+                                                i < averageRating
+                                                  ? "text-yellow-400 fill-current"
+                                                  : "text-gray-300"
+                                              }`}
+                                            />
+                                          )
+                                        )}
+                                      </div>
+                                    ) : (
+                                      ""
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            }
+                          )
                         ) : (
                           <tr>
                             <td
-                              colSpan={4}
+                              colSpan={5}
                               className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
                             >
                               No registered users yet.
@@ -971,6 +1124,11 @@ const AdminDashboard = () => {
                       </tbody>
                     </table>
                   </div>
+                  <PaginationControls
+                    page={registeredPage}
+                    setPage={setRegisteredPage}
+                    totalItems={registeredUsers.length}
+                  />
                 </div>
               )}
               {activeAnalyticsTab === "visits" && (
@@ -994,23 +1152,25 @@ const AdminDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {userVisits.length > 0 ? (
-                          userVisits.map((user, index) => (
-                            <tr
-                              key={index}
-                              className="hover:bg-gray-50 transition-colors"
-                            >
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                                {user.email}
-                              </td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                                {user.visitCount}
-                              </td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                                {user.lastVisit}
-                              </td>
-                            </tr>
-                          ))
+                        {getPaginatedData(userVisits, visitsPage).length > 0 ? (
+                          getPaginatedData(userVisits, visitsPage).map(
+                            (user, index) => (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-50 transition-colors"
+                              >
+                                <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                                  {user.email}
+                                </td>
+                                <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                  {user.visitCount}
+                                </td>
+                                <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                  {user.lastVisit}
+                                </td>
+                              </tr>
+                            )
+                          )
                         ) : (
                           <tr>
                             <td
@@ -1024,6 +1184,11 @@ const AdminDashboard = () => {
                       </tbody>
                     </table>
                   </div>
+                  <PaginationControls
+                    page={visitsPage}
+                    setPage={setVisitsPage}
+                    totalItems={userVisits.length}
+                  />
                 </div>
               )}
               {activeAnalyticsTab === "activities" && (
@@ -1047,24 +1212,27 @@ const AdminDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {userActivities.length > 0 ? (
-                          userActivities.map((activity, index) => (
-                            <tr
-                              key={index}
-                              className="hover:bg-gray-50 transition-colors"
-                            >
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                                {activity.email}
-                              </td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                                {activity.action.charAt(0).toUpperCase() +
-                                  activity.action.slice(1)}
-                              </td>
-                              <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                                {activity.timestamp}
-                              </td>
-                            </tr>
-                          ))
+                        {getPaginatedData(userActivities, activitiesPage)
+                          .length > 0 ? (
+                          getPaginatedData(userActivities, activitiesPage).map(
+                            (activity, index) => (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-50 transition-colors"
+                              >
+                                <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                                  {activity.email}
+                                </td>
+                                <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                  {activity.action.charAt(0).toUpperCase() +
+                                    activity.action.slice(1)}
+                                </td>
+                                <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                  {activity.timestamp}
+                                </td>
+                              </tr>
+                            )
+                          )
                         ) : (
                           <tr>
                             <td
@@ -1078,6 +1246,11 @@ const AdminDashboard = () => {
                       </tbody>
                     </table>
                   </div>
+                  <PaginationControls
+                    page={activitiesPage}
+                    setPage={setActivitiesPage}
+                    totalItems={userActivities.length}
+                  />
                 </div>
               )}
             </div>
@@ -1097,14 +1270,26 @@ const AdminDashboard = () => {
                     onChange={(e) => setNewQuestion(e.target.value)}
                     placeholder="Enter a new sample question"
                     className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                    disabled={sampleQuestions.length >= 4}
                   />
                   <button
                     onClick={handleAddQuestion}
-                    className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-all duration-300 text-sm sm:text-base shadow-md"
+                    disabled={sampleQuestions.length >= 4}
+                    className={`bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-all duration-300 text-sm sm:text-base shadow-md ${
+                      sampleQuestions.length >= 4
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
                   >
                     Add Question
                   </button>
                 </div>
+                {sampleQuestions.length >= 4 && (
+                  <p className="text-xs sm:text-sm text-gray-500 mt-2">
+                    Maximum 4 questions reached. Delete a question to add a new
+                    one.
+                  </p>
+                )}
               </div>
               <div className="overflow-x-auto w-full">
                 <table className="min-w-full divide-y divide-gray-200 mobile-table">
@@ -1200,7 +1385,7 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Confirm Delete Modal */}
+          {/* Confirm Delete PDF Modal */}
           {showConfirmDeleteModal && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
               <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 w-full max-w-xs sm:max-w-md animate-slide-up">
@@ -1221,13 +1406,41 @@ const AdminDashboard = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      console.log(
-                        "Delete confirmed for ID:",
-                        showConfirmDeleteModal
-                      );
-                      handleDeletePdf(showConfirmDeleteModal);
-                    }}
+                    onClick={() => handleDeletePdf(showConfirmDeleteModal)}
+                    className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-300 text-sm shadow-md"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Confirm Delete Question Modal */}
+          {showConfirmDeleteQuestionModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
+              <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 w-full max-w-xs sm:max-w-md animate-slide-up">
+                <h3 className="text-base sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
+                  Confirm Deletion
+                </h3>
+                <p className="text-xs sm:text-base text-gray-600 mb-4 sm:mb-6">
+                  Are you sure you want to delete the question "
+                  {sampleQuestions.find(
+                    (q) => q.id === showConfirmDeleteQuestionModal
+                  )?.question || showConfirmDeleteQuestionModal}
+                  "?
+                </p>
+                <div className="flex flex-col sm:flex-row justify-end gap-3">
+                  <button
+                    onClick={cancelDeleteQuestion}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-all duration-300 text-sm mb-2 sm:mb-0"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() =>
+                      confirmDeleteQuestion(showConfirmDeleteQuestionModal)
+                    }
                     className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-300 text-sm shadow-md"
                   >
                     Delete
