@@ -136,7 +136,7 @@ function App() {
         setChatHistory(JSON.parse(savedHistory));
       }
       fetchSampleQuestions();
-      fetchUserFeedback();
+      // fetchUserFeedback();
     } else {
       setShowLoginModal(true);
     }

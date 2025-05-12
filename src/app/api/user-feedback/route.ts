@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     const response = await fetch(
-      `http://localhost:8000/user-feedback?user_id=${encodeURIComponent(
+      `http://13.234.110.97:8000/user-feedback?user_id=${encodeURIComponent(
         user_id
       )}`,
       {
@@ -46,7 +46,7 @@ export async function GET() {
   try {
     const user_id = "680f24fbb60db587d3c25ba9"; // Hardcoded as per requirement
     const response = await fetch(
-      `http://localhost:8000/user-feedback/${encodeURIComponent(user_id)}`,
+      `http://13.234.110.97:8000/user-feedback/${encodeURIComponent(user_id)}`,
       {
         method: "GET",
         headers: {
