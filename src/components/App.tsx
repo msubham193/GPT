@@ -863,7 +863,7 @@ function App() {
                     )}
                     <button
                       onClick={() => setShowRatingModal(true)}
-                      className="block w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
                       <Star className="w-4 h-4" />
                       Rating & Feedback
@@ -1209,7 +1209,6 @@ function App() {
                     title="Delete all history"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Delete All</span>
                   </button>
                 )}
                 <button

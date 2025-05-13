@@ -48,7 +48,7 @@ interface RegisteredUser {
   created_at: string;
 }
 
-interface SampleQuestion {
+interface SampleQuote {
   id: string;
   question: string;
   created_at: string;
@@ -69,7 +69,7 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "knowledge" | "charts" | "questions"
+    "dashboard" | "knowledge" | "charts" | "quotes"
   >("dashboard");
   const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<
     "registered" | "visits" | "activities"
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
   const [userVisits, setUserVisits] = useState<UserVisit[]>([]);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
-  const [sampleQuestions, setSampleQuestions] = useState<SampleQuestion[]>([]);
+  const [sampleQuotes, setSampleQuotes] = useState<SampleQuote[]>([]);
   const [userFeedback, setUserFeedback] = useState<UserFeedback[]>([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [isUploading, setIsUploading] = useState(false);
@@ -91,13 +91,14 @@ const AdminDashboard = () => {
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<
     string | null
   >(null);
-  const [showConfirmDeleteQuestionModal, setShowConfirmDeleteQuestionModal] =
+  const [showConfirmDeleteQuoteModal, setShowConfirmDeleteQuoteModal] =
     useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [newQuestion, setNewQuestion] = useState("");
+  const [newQuote, setNewQuote] = useState("");
   const [registeredPage, setRegisteredPage] = useState(1);
   const [visitsPage, setVisitsPage] = useState(1);
   const [activitiesPage, setActivitiesPage] = useState(1);
+  const [recentActivitiesPage, setRecentActivitiesPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
@@ -114,24 +115,27 @@ const AdminDashboard = () => {
     });
   };
 
-  // Fetch sample questions from backend
-  const fetchSampleQuestions = async () => {
+  // Fetch sample quotes from backend
+  const fetchSampleQuotes = async () => {
     try {
       const response = await fetch("/api/sample-questions", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
       const data = await response.json();
+
+      console.log(data);
+
       if (!response.ok)
-        throw new Error(data.error || "Failed to fetch sample questions");
-      setSampleQuestions(data || []);
+        throw new Error(data.error || "Failed to fetch sample quotes");
+      setSampleQuotes(data || []);
     } catch (err: any) {
-      setError(err.message || "Failed to fetch sample questions");
-      toast.error(err.message || "Failed to fetch sample questions", {
+      setError(err.message || "Failed to fetch sample quotes");
+      toast.error(err.message || "Failed to fetch sample quotes", {
         position: "bottom-center",
         duration: 3000,
       });
-      setSampleQuestions([]);
+      setSampleQuotes([]);
     }
   };
 
@@ -190,7 +194,7 @@ const AdminDashboard = () => {
         // Dynamically generate user visits
         const visits = data.data.map((user: RegisteredUser) => ({
           email: user.email,
-          visitCount: Math.floor(Math.random() * 10) + 1, // Simulated visit count
+          visitCount: Math.floor(Math.random() * 10) + 1,
           lastVisit: new Date().toISOString().slice(0, 16).replace("T", " "),
         }));
         setUserVisits(visits);
@@ -212,8 +216,8 @@ const AdminDashboard = () => {
         setUserActivities(activities);
         localStorage.setItem("userActivities", JSON.stringify(activities));
 
-        // Fetch sample questions
-        await fetchSampleQuestions();
+        // Fetch sample quotes
+        await fetchSampleQuotes();
         // Fetch user feedback
         await fetchUserFeedback();
       } catch (err: any) {
@@ -277,8 +281,8 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (isLoggedIn && activeTab === "knowledge") {
       fetchDocuments();
-    } else if (isLoggedIn && activeTab === "questions") {
-      fetchSampleQuestions();
+    } else if (isLoggedIn && activeTab === "quotes") {
+      fetchSampleQuotes();
     }
   }, [isLoggedIn, activeTab]);
 
@@ -298,7 +302,7 @@ const AdminDashboard = () => {
   };
 
   const handleMobileTabSelect = (
-    tab: "dashboard" | "knowledge" | "charts" | "questions"
+    tab: "dashboard" | "knowledge" | "charts" | "quotes"
   ) => {
     setActiveTab(tab);
     setMobileMenuOpen(false);
@@ -317,6 +321,18 @@ const AdminDashboard = () => {
       );
 
       for (const file of Array.from(files)) {
+        // Validate file size (5MB = 5 * 1024 * 1024 bytes)
+        if (file.size > 5 * 1024 * 1024) {
+          setShowErrorModal(
+            `File "${file.name}" exceeds 5MB limit. Please upload a smaller file.`
+          );
+          toast.error(`File "${file.name}" exceeds 5MB limit`, {
+            position: "bottom-center",
+            duration: 3000,
+          });
+          continue;
+        }
+
         const formData = new FormData();
         formData.append("file", file);
         formData.append("document_name", file.name);
@@ -473,17 +489,17 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddQuestion = async () => {
-    if (!newQuestion.trim()) {
-      toast.error("Question cannot be empty", {
+  const handleAddQuote = async () => {
+    if (!newQuote.trim()) {
+      toast.error("Quote cannot be empty", {
         position: "bottom-center",
         duration: 2000,
       });
       return;
     }
 
-    if (sampleQuestions.length >= 4) {
-      toast.error("Maximum 4 questions allowed", {
+    if (sampleQuotes.length >= 4) {
+      toast.error("Maximum 4 quotes allowed", {
         position: "bottom-center",
         duration: 2000,
       });
@@ -491,69 +507,69 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch("/api/sample-questions", {
+      const response = await fetch("/api/sample-quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: newQuestion }),
+        body: JSON.stringify({ quote: newQuote }),
       });
       const data = await response.json();
 
       if (!response.ok)
-        throw new Error(data.error || "Failed to add sample question");
+        throw new Error(data.error || "Failed to add sample quote");
 
-      const newQ: SampleQuestion = data;
-      setSampleQuestions((prev) => [...prev, newQ]);
-      setNewQuestion("");
-      toast.success("Question added successfully!", {
+      const newQ: SampleQuote = data;
+      setSampleQuotes((prev) => [...prev, newQ]);
+      setNewQuote("");
+      toast.success("Quote added successfully!", {
         position: "bottom-center",
         duration: 2000,
       });
     } catch (err: any) {
-      setError(err.message || "Failed to add sample question");
-      toast.error(err.message || "Failed to add sample question", {
+      setError(err.message || "Failed to add sample quote");
+      toast.error(err.message || "Failed to add sample quote", {
         position: "bottom-center",
         duration: 3000,
       });
     }
   };
 
-  const handleDeleteQuestion = (id: string) => {
-    setShowConfirmDeleteQuestionModal(id);
+  const handleDeleteQuote = (id: string) => {
+    setShowConfirmDeleteQuoteModal(id);
   };
 
-  const confirmDeleteQuestion = async (id: string) => {
-    const questionText = sampleQuestions.find((q) => q.id === id)?.question;
-    setShowConfirmDeleteQuestionModal(null);
+  const confirmDeleteQuote = async (id: string) => {
+    const quoteText = sampleQuotes.find((q) => q.id === id)?.quote;
+    setShowConfirmDeleteQuoteModal(null);
 
     try {
-      const response = await fetch(`/api/sample-questions/${id}`, {
+      const response = await fetch(`/api/sample-quotes/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
       const data = await response.json();
       if (!response.ok)
-        throw new Error(data.error || "Failed to delete sample question");
+        throw new Error(data.error || "Failed to delete sample quote");
 
-      setSampleQuestions((prev) => prev.filter((q) => q.id !== id));
+      setSampleQuotes((prev) => prev.filter((q) => q.id !== id));
       toast.success(
-        data.message || `Question "${questionText}" deleted successfully!`,
+        data.message || `Quote "${quoteText}" deleted successfully!`,
         {
           position: "bottom-center",
           duration: 2000,
         }
       );
     } catch (err: any) {
-      setError(err.message || "Failed to delete sample question");
-      toast.error(err.message || "Failed to delete sample question", {
+      setError(err.message || "Failed to delete sample quote");
+      toast.error(err.message || "Failed to delete sample quote", {
         position: "bottom-center",
         duration: 3000,
       });
-      await fetchSampleQuestions();
+      await fetchSampleQuotes();
     }
   };
 
-  const cancelDeleteQuestion = () => {
-    setShowConfirmDeleteQuestionModal(null);
+  const cancelDeleteQuote = () => {
+    setShowConfirmDeleteQuoteModal(null);
   };
 
   // Calculate average rating for a user
@@ -564,7 +580,7 @@ const AdminDashboard = () => {
     if (userRatings.length === 0) return 0;
     const average =
       userRatings.reduce((sum, rating) => sum + rating, 0) / userRatings.length;
-    return Math.round(average); // Round to nearest integer for star display
+    return Math.round(average);
   };
 
   // Pagination logic
@@ -578,7 +594,7 @@ const AdminDashboard = () => {
   const totalQueries = userActivities.filter(
     (a) => a.action === "query"
   ).length;
-  const userGrowth = totalVisitors * 1; // 1% per user
+  const userGrowth = totalVisitors * 1;
 
   // Pagination controls
   const PaginationControls = ({
@@ -687,6 +703,30 @@ const AdminDashboard = () => {
           .mobile-table td:nth-of-type(5):before {
             content: "Rating";
           }
+          .mobile-table.activities td:nth-of-type(1):before {
+            content: "Email";
+          }
+          .mobile-table.activities td:nth-of-type(2):before {
+            content: "Action";
+          }
+          .mobile-table.activities td:nth-of-type(3):before {
+            content: "Timestamp";
+          }
+          .mobile-table.documents td:nth-of-type(1):before {
+            content: "Document ID";
+          }
+          .mobile-table.documents td:nth-of-type(2):before {
+            content: "Actions";
+          }
+          .mobile-table.quotes td:nth-of-type(1):before {
+            content: "Quote";
+          }
+          .mobile-table.quotes td:nth-of-type(2):before {
+            content: "Created At";
+          }
+          .mobile-table.quotes td:nth-of-type(3):before {
+            content: "Action";
+          }
         }
       `}</style>
 
@@ -721,9 +761,9 @@ const AdminDashboard = () => {
               },
               { name: "User Charts", icon: Users, tab: "charts" as const },
               {
-                name: "Sample Questions",
+                name: "Sample Quotes",
                 icon: HelpCircle,
-                tab: "questions" as const,
+                tab: "quotes" as const,
               },
             ].map((item) => (
               <li key={item.tab}>
@@ -842,7 +882,7 @@ const AdminDashboard = () => {
                   Recent Activities
                 </h3>
                 <div className="overflow-x-auto w-full">
-                  <table className="min-w-full divide-y divide-gray-200 mobile-table">
+                  <table className="min-w-full divide-y divide-gray-200 mobile-table activities">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -857,26 +897,46 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {userActivities.slice(0, 5).map((activity, index) => (
-                        <tr
-                          key={index}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                            {activity.email}
-                          </td>
-                          <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                            {activity.action.charAt(0).toUpperCase() +
-                              activity.action.slice(1)}
-                          </td>
-                          <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                            {activity.timestamp}
+                      {getPaginatedData(userActivities, recentActivitiesPage)
+                        .length > 0 ? (
+                        getPaginatedData(
+                          userActivities,
+                          recentActivitiesPage
+                        ).map((activity, index) => (
+                          <tr
+                            key={index}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                              {activity.email}
+                            </td>
+                            <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                              {activity.action.charAt(0).toUpperCase() +
+                                activity.action.slice(1)}
+                            </td>
+                            <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                              {activity.timestamp}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={3}
+                            className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
+                          >
+                            No recent activities recorded yet.
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
+                <PaginationControls
+                  page={recentActivitiesPage}
+                  setPage={setRecentActivitiesPage}
+                  totalItems={userActivities.length}
+                />
               </div>
             </div>
           )}
@@ -890,6 +950,14 @@ const AdminDashboard = () => {
               <p className="text-gray-600 mb-3 sm:mb-4 text-xs sm:text-base">
                 Upload PDF files to enhance the CIME GPT's knowledge base. These
                 documents will be processed and made available for user queries.
+                <br />
+                <span className="text-red-500  text-sm">
+                  No graphics PDFs will be accepted.
+                </span>
+                <br />
+                <span className="text-red-500 text-sm">
+                  The PDF should be a maximum of 5 MB.
+                </span>
               </p>
               {error && (
                 <div className="text-red-500 text-xs sm:text-sm mb-3 sm:mb-4 animate-slide-up">
@@ -934,14 +1002,14 @@ const AdminDashboard = () => {
                     PDF Upload History
                   </h4>
                   <div className="overflow-x-auto w-full">
-                    <table className="min-w-full divide-y divide-gray-200 mobile-table">
+                    <table className="min-w-full divide-y divide-gray-200 mobile-table documents">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Document ID
                           </th>
                           <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Action
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -956,26 +1024,52 @@ const AdminDashboard = () => {
                                 href={`http://13.234.110.97:8000/documents/${encodeURIComponent(
                                   file.id
                                 )}/pdf`}
-                                className="text-blue-600 hover:underline focus:outline-none"
-                                title={`Open ${file.name}`}
+                                passHref
+                                legacyBehavior
                               >
-                                {file.name}
+                                <a
+                                  className="text-blue-600 hover:underline focus:outline-none"
+                                  title={`Open ${file.name}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {file.name}
+                                </a>
                               </Link>
                             </td>
                             <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
-                              <button
-                                onClick={() =>
-                                  setShowConfirmDeleteModal(file.id)
-                                }
-                                disabled={deletingId === file.id}
-                                className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                              >
-                                {deletingId === file.id ? (
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-5 h-5" />
-                                )}
-                              </button>
+                              <div className="flex gap-2">
+                                {/* <Link
+                                  href={`http://13.234.110.97:8000/documents/${encodeURIComponent(
+                                    file.id
+                                  )}/pdf`}
+                                  passHref
+                                  legacyBehavior
+                                >
+                                  <a
+                                    className="text-blue-600 hover:underline focus:outline-none"
+                                    title={`Open ${file.name}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {file.name}
+                                  </a>
+                                </Link> */}
+                                <button
+                                  onClick={() =>
+                                    setShowConfirmDeleteModal(file.id)
+                                  }
+                                  disabled={deletingId === file.id}
+                                  className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                                  title="Delete PDF"
+                                >
+                                  {deletingId === file.id ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-5 h-5" />
+                                  )}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1197,7 +1291,7 @@ const AdminDashboard = () => {
                     User Activity Analysis
                   </h4>
                   <div className="overflow-x-auto w-full">
-                    <table className="min-w-full divide-y divide-gray-200 mobile-table">
+                    <table className="min-w-full divide-y divide-gray-200 mobile-table activities">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1256,47 +1350,46 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Sample Questions Tab */}
-          {activeTab === "questions" && (
+          {/* Sample Quotes Tab */}
+          {activeTab === "quotes" && (
             <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 animate-fade-in w-full">
               <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-800">
-                Sample Questions
+                Sample Quotes
               </h3>
               <div className="mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="text"
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    placeholder="Enter a new sample question"
+                    value={newQuote}
+                    onChange={(e) => setNewQuote(e.target.value)}
+                    placeholder="Enter a new sample quote"
                     className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                    disabled={sampleQuestions.length >= 4}
+                    disabled={sampleQuotes.length >= 4}
                   />
                   <button
-                    onClick={handleAddQuestion}
-                    disabled={sampleQuestions.length >= 4}
+                    onClick={handleAddQuote}
+                    disabled={sampleQuotes.length >= 4}
                     className={`bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-all duration-300 text-sm sm:text-base shadow-md ${
-                      sampleQuestions.length >= 4
+                      sampleQuotes.length >= 4
                         ? "opacity-50 cursor-not-allowed"
                         : ""
                     }`}
                   >
-                    Add Question
+                    Add Quote
                   </button>
                 </div>
-                {sampleQuestions.length >= 4 && (
+                {sampleQuotes.length >= 4 && (
                   <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                    Maximum 4 questions reached. Delete a question to add a new
-                    one.
+                    Maximum 4 quotes reached. Delete a quote to add a new one.
                   </p>
                 )}
               </div>
               <div className="overflow-x-auto w-full">
-                <table className="min-w-full divide-y divide-gray-200 mobile-table">
+                <table className="min-w-full divide-y divide-gray-200 mobile-table quotes">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Question
+                        Quote
                       </th>
                       <th className="px-2 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Created At
@@ -1307,21 +1400,21 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {sampleQuestions.length > 0 ? (
-                      sampleQuestions.map((question) => (
+                    {sampleQuotes.length > 0 ? (
+                      sampleQuotes.map((quote) => (
                         <tr
-                          key={question.id}
+                          key={quote.id}
                           className="hover:bg-gray-50 transition-colors"
                         >
                           <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                            {question.question}
+                            {quote.question}
                           </td>
                           <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                            {formatDate(question.created_at)}
+                            {formatDate(quote.created_at)}
                           </td>
                           <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
                             <button
-                              onClick={() => handleDeleteQuestion(question.id)}
+                              onClick={() => handleDeleteQuote(quote.id)}
                               className="text-red-500 hover:text-red-700"
                             >
                               <Trash2 className="w-5 h-5" />
@@ -1335,7 +1428,7 @@ const AdminDashboard = () => {
                           colSpan={3}
                           className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
                         >
-                          No sample questions added yet.
+                          No sample quotes added yet.
                         </td>
                       </tr>
                     )}
@@ -1416,30 +1509,30 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Confirm Delete Question Modal */}
-          {showConfirmDeleteQuestionModal && (
+          {/* Confirm Delete Quote Modal */}
+          {showConfirmDeleteQuoteModal && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
               <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 w-full max-w-xs sm:max-w-md animate-slide-up">
                 <h3 className="text-base sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
                   Confirm Deletion
                 </h3>
                 <p className="text-xs sm:text-base text-gray-600 mb-4 sm:mb-6">
-                  Are you sure you want to delete the question "
-                  {sampleQuestions.find(
-                    (q) => q.id === showConfirmDeleteQuestionModal
-                  )?.question || showConfirmDeleteQuestionModal}
+                  Are you sure you want to delete the quote "
+                  {sampleQuotes.find(
+                    (q) => q.id === showConfirmDeleteQuoteModal
+                  )?.quote || showConfirmDeleteQuoteModal}
                   "?
                 </p>
                 <div className="flex flex-col sm:flex-row justify-end gap-3">
                   <button
-                    onClick={cancelDeleteQuestion}
+                    onClick={cancelDeleteQuote}
                     className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-all duration-300 text-sm mb-2 sm:mb-0"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() =>
-                      confirmDeleteQuestion(showConfirmDeleteQuestionModal)
+                      confirmDeleteQuote(showConfirmDeleteQuoteModal)
                     }
                     className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-300 text-sm shadow-md"
                   >
