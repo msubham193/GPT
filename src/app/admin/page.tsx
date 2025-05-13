@@ -538,7 +538,7 @@ const AdminDashboard = () => {
   };
 
   const confirmDeleteQuote = async (id: string) => {
-    const quoteText = sampleQuotes.find((q) => q.id === id)?.quote;
+    const quoteText = sampleQuotes.find((q) => q.id === id)?.question;
     setShowConfirmDeleteQuoteModal(null);
 
     try {
