@@ -1520,7 +1520,7 @@ const AdminDashboard = () => {
                   Are you sure you want to delete the quote "
                   {sampleQuotes.find(
                     (q) => q.id === showConfirmDeleteQuoteModal
-                  )?.quote || showConfirmDeleteQuoteModal}
+                  )?.question || showConfirmDeleteQuoteModal}
                   "?
                 </p>
                 <div className="flex flex-col sm:flex-row justify-end gap-3">
