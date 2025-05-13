@@ -1227,7 +1227,7 @@ function App() {
             onSubmit={handleSubmit}
             className="sticky bottom-0 w-full bg-white z-10 pb-4 sm:pb-6"
           >
-            <div className="relative max-w-4xl mx-auto">
+            <div className="relative max-w-4xl mx-auto ">
               <input
                 type="text"
                 value={input}
@@ -1235,7 +1235,24 @@ function App() {
                 placeholder="Type your message..."
                 className="w-full text-xs sm:text-sm backdrop-blur-md bg-gray-50/80 rounded-lg pl-3 sm:pl-4 pr-10 sm:pr-12 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-400/50 border border-gray-200 focus:border-blue-400/50 transition-all duration-300 text-gray-900"
                 disabled={!isLoggedIn}
+                style={{ paddingLeft: isLoggedIn ? "2.5rem" : "0.75rem" }}
               />
+              {isLoggedIn && (
+                <button
+                  type="button"
+                  onClick={handleNewChat}
+                  className={ `absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-300 rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-gray-400/20 ${
+                    isTyping ||
+                    (messages.length > 0 &&
+                      messages[messages.length - 1].type === "bot")
+                      ? "opacity-100"
+                      : "opacity-0 pointer-events-none"
+                  }`}
+                  disabled={!isLoggedIn}
+                >
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray " />
+                </button>
+              )}
               <button
                 type="submit"
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center bg-black hover:bg-gray-800 rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-gray-400/20"
