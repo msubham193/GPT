@@ -759,7 +759,7 @@ const AdminDashboard = () => {
                 icon: BookOpen,
                 tab: "knowledge" as const,
               },
-              { name: "User Charts", icon: Users, tab: "charts" as const },
+              { name: "User Details", icon: Users, tab: "charts" as const },
               {
                 name: "Sample Quotes",
                 icon: HelpCircle,
