@@ -21,6 +21,7 @@ import {
   Star,
   Mic,
   MessageSquare,
+  Plus,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -634,6 +635,18 @@ function App() {
     }
   };
 
+  // Start a new chat
+  const handleNewChat = () => {
+    setMessages([]);
+    setInput("");
+    setIsTyping(false);
+    setError(null);
+    toast.success("Started a new chat!", {
+      position: "bottom-center",
+      duration: 2000,
+    });
+  };
+
   // Format text for rendering (e.g., Markdown-like formatting)
   const formatText = (text: string) => {
     let formattedText = text.replace(/^[\s]*[-*][\s]+(.+)$/gm, "<li>$1</li>");
@@ -814,7 +827,7 @@ function App() {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Tabs for Text and Voice Chat */}
-            <div className="flex gap-2">
+            {/* <div className="flex gap-2">
               <button
                 onClick={() => handleTabSwitch("text")}
                 className={`flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm transition-all duration-300 ${
@@ -837,7 +850,7 @@ function App() {
                 <Mic className="w-3 h-3 sm:w-4 sm:h-4" />
                 Voice Chat
               </button>
-            </div>
+            </div> */}
             {isLoggedIn ? (
               <div className="relative">
                 <button
@@ -914,6 +927,34 @@ function App() {
 
         {/* Chat Interface and History Sidebar */}
         <div className="flex flex-1 flex-col min-h-[calc(100vh-4rem)] max-w-4xl mx-auto w-full px-2 sm:px-4">
+          {/* Additional Text and Voice Chat Tabs (Center Top) */}
+          {messages.length === 0 && (
+            <div className="flex justify-center gap-2 mb-4 mt-2">
+              <button
+                onClick={() => handleTabSwitch("text")}
+                className={`flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm transition-all duration-300 ${
+                  activeTab === "text"
+                    ? "bg-black text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+                Text Chat
+              </button>
+              <button
+                onClick={() => handleTabSwitch("voice")}
+                className={`flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm transition-all duration-300 ${
+                  activeTab === "voice"
+                    ? "bg-black text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                <Mic className="w-3 h-3 sm:w-4 sm:h-4" />
+                Voice Chat
+              </button>
+            </div>
+          )}
+
           {/* Chat Messages Container */}
           <div
             className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 mb-2 space-y-3 sm:space-y-4 ${
@@ -978,7 +1019,7 @@ function App() {
                       <div>
                         <button
                           onClick={() => toggleContext(index)}
-                          className="text-xs text-gray-500 mt-1 sm:mt-2 hover:text-gray-700"
+                          className="text-xs text-gray-4580 mt-1 sm:mt-2 hover:text-gray-700"
                         >
                           {showContext === index
                             ? "Hide context"
@@ -1050,6 +1091,20 @@ function App() {
                 {error}
               </div>
             )}
+            {/* New Chat Button */}
+            {/* {(isTyping ||
+              (messages.length > 0 &&
+                messages[messages.length - 1].type === "bot")) && (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={handleNewChat}
+                  className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-all duration-300 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Chat
+                </button>
+              </div>
+            )} */}
             <div ref={messagesEndRef} />
           </div>
 
@@ -1205,7 +1260,7 @@ function App() {
                 {chatHistory.length > 0 && (
                   <button
                     onClick={handleDeleteAllHistory}
-                    className="text-red-500 hover:text-red-600 text-xs sm:text-sm flex items-center gap-1"
+                    className="text-red-500 hover:text-red-600 text-xs sm:text-sm sm:text-sm flex items-center gap-1"
                     title="Delete all history"
                   >
                     <Trash2 className="w-4 h-4" />
