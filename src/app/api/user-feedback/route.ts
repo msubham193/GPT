@@ -42,30 +42,4 @@ export async function POST(request: Request) {
 }
 
 // GET handler for fetching user feedback
-export async function GET() {
-  try {
-    const user_id = "680f24fbb60db587d3c25ba9"; // Hardcoded as per requirement
-    const response = await fetch(
-      `http://13.234.110.97:8000/user-feedback/${encodeURIComponent(user_id)}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch user feedback");
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("Error in user feedback GET API route:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user feedback" },
-      { status: 500 }
-    );
-  }
-}

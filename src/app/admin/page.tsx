@@ -103,6 +103,8 @@ const AdminDashboard = () => {
   const uploadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
+  const [userId, setUserId] = useState<string | null>(null);
+
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleString("en-US", {
@@ -124,7 +126,7 @@ const AdminDashboard = () => {
       });
       const data = await response.json();
 
-      console.log(data);
+      // console.log(data);
 
       if (!response.ok)
         throw new Error(data.error || "Failed to fetch sample quotes");
@@ -139,17 +141,55 @@ const AdminDashboard = () => {
     }
   };
 
-  // Fetch user feedback from backend
-  const fetchUserFeedback = async () => {
+  // Fetch user feedback from backend for all registered users
+  const fetchUserFeedback = async (users: RegisteredUser[]) => {
     try {
-      const response = await fetch("/api/user-feedback", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+      const feedbackPromises = users.map(async (user) => {
+        const response = await fetch(
+          `/api/user-feedback/${encodeURIComponent(user.id)}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        console.log(response);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || `Failed to fetch feedback for user ${user.id}`
+          );
+        }
+        return data; // Expecting an array of feedback objects
       });
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Failed to fetch user feedback");
-      setUserFeedback(data || []);
+
+      const feedbackResults = await Promise.allSettled(feedbackPromises);
+      const allFeedback: UserFeedback[] = [];
+
+      feedbackResults.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          allFeedback.push(...(result.value || []));
+        } else {
+          console.error(
+            `Failed to fetch feedback for user ${users[index].id}:`,
+            result.reason
+          );
+          // Optionally, you can add a toast notification for individual failures
+        }
+      });
+
+      setUserFeedback(allFeedback);
+      if (allFeedback.length > 0) {
+        toast.success("User feedback fetched successfully!", {
+          position: "bottom-center",
+          duration: 2000,
+        });
+      } else {
+        toast("No user feedback found.", {
+          position: "bottom-center",
+          duration: 2000,
+        });
+      }
     } catch (err: any) {
       setError(err.message || "Failed to fetch user feedback");
       toast.error(err.message || "Failed to fetch user feedback", {
@@ -163,6 +203,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const currentUser = localStorage.getItem("currentUser");
+
     if (!loggedIn || currentUser !== "admin@cime.ac.in") {
       toast.error("Unauthorized access", {
         position: "bottom-center",
@@ -218,8 +259,8 @@ const AdminDashboard = () => {
 
         // Fetch sample quotes
         await fetchSampleQuotes();
-        // Fetch user feedback
-        await fetchUserFeedback();
+        // Fetch user feedback for all registered users
+        await fetchUserFeedback(data.data);
       } catch (err: any) {
         setError(err.message || "Failed to fetch users");
         toast.error(err.message || "Failed to fetch users", {
@@ -472,23 +513,6 @@ const AdminDashboard = () => {
     fileInputRef.current?.click();
   };
 
-  const handleOpenPdf = async (id: string) => {
-    const pdfUrl = `http://13.234.110.97:8000/documents/${encodeURIComponent(
-      id
-    )}/pdf`;
-    try {
-      const response = await fetch(pdfUrl, { method: "HEAD" });
-      if (!response.ok) throw new Error("PDF not found");
-      window.open(pdfUrl, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      setShowErrorModal(`Failed to open document "${id}". Please try again.`);
-      toast.error(`Failed to open document "${id}"`, {
-        position: "bottom-center",
-        duration: 3000,
-      });
-    }
-  };
-
   const handleAddQuote = async () => {
     if (!newQuote.trim()) {
       toast.error("Quote cannot be empty", {
@@ -575,8 +599,9 @@ const AdminDashboard = () => {
   // Calculate average rating for a user
   const getUserAverageRating = (userId: string): number => {
     const userRatings = userFeedback
-      .filter((fb) => fb.user_id === userId)
+      .filter((fb) => fb?.user_id === userId)
       .map((fb) => fb.rating);
+
     if (userRatings.length === 0) return 0;
     const average =
       userRatings.reduce((sum, rating) => sum + rating, 0) / userRatings.length;
@@ -1039,22 +1064,6 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
                               <div className="flex gap-2">
-                                {/* <Link
-                                  href={`http://13.234.110.97:8000/documents/${encodeURIComponent(
-                                    file.id
-                                  )}/pdf`}
-                                  passHref
-                                  legacyBehavior
-                                >
-                                  <a
-                                    className="text-blue-600 hover:underline focus:outline-none"
-                                    title={`Open ${file.name}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    {file.name}
-                                  </a>
-                                </Link> */}
                                 <button
                                   onClick={() =>
                                     setShowConfirmDeleteModal(file.id)

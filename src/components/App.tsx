@@ -912,8 +912,9 @@ function App() {
       </div>
 
       {/* Chat Interface and History Sidebar */}
-      <div className="flex flex-1 flex-col min-h-[calc(100vh-4rem)] max-w-4xl mx-auto w-full px-2 sm:px-4">
+      <div className="flex flex-1 flex-col min-h-[calc(100vh-10rem)] max-w-4xl mx-auto w-full px-2 sm:px-4">
         {/* Tabs for Text Chat and Voice Chat */}
+
         <div className="flex justify-center gap-2 sm:gap-4 mt-2 sm:mt-4">
           <button
             onClick={() => setSelectedTab("Text Chat")}
@@ -941,9 +942,11 @@ function App() {
         {selectedTab === "Text Chat" ? (
           <>
             <div
-              className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100 mb-2 space-y-3 sm:space-y-4 ${
-                messages.length === 0 ? "flex flex-col justify-center" : ""
-              } min-h-[40vh]`}
+              className={`flex-1 mb-2 space-y-3 sm:space-y-4 min-h-[40vh] ${
+                messages.length === 0
+                  ? "flex flex-col justify-center overflow-y-hidden"
+                  : "overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100"
+              }`}
             >
               {messages.length === 0 && (
                 <div className="text-center mt-4 mb-3 sm:mt-20 sm:mb-4 animate-fadeIn w-full px-2">
@@ -1339,7 +1342,7 @@ function App() {
               </button>
               <button
                 onClick={startNewChat}
-                className="px-2 sm:px-4 py-1 sm:py-2 bg-black hover:bg-black text-white rounded-lg transition-all duration-300 text-xs sm:text-base"
+                className="px-2 sm:px-4 py-1 sm:py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-300 text-xs sm:text-base"
               >
                 Start New
               </button>
