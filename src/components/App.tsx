@@ -186,33 +186,33 @@ function App() {
   };
 
   // Fetch user feedback from API
-  const fetchUserFeedback = async () => {
-    setIsLoadingFeedback(true);
-    try {
-      const response = await fetch("/api/user-feedback", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+  // const fetchUserFeedback = async () => {
+  //   setIsLoadingFeedback(true);
+  //   try {
+  //     const response = await fetch("/api/user-feedback", {
+  //       method: "GET",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //     });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch user feedback");
-      }
+  //     if (!response.ok) {
+  //       throw new Error("Failed to fetch user feedback");
+  //     }
 
-      const data: UserFeedback[] = await response.json();
-      setUserFeedback(data);
-    } catch (err) {
-      console.error("Error fetching user feedback:", err);
-      toast.error("Failed to load user feedback", {
-        position: "bottom-center",
-        duration: 3000,
-      });
-      setUserFeedback([]);
-    } finally {
-      setIsLoadingFeedback(false);
-    }
-  };
+  //     const data: UserFeedback[] = await response.json();
+  //     setUserFeedback(data);
+  //   } catch (err) {
+  //     console.error("Error fetching user feedback:", err);
+  //     toast.error("Failed to load user feedback", {
+  //       position: "bottom-center",
+  //       duration: 3000,
+  //     });
+  //     setUserFeedback([]);
+  //   } finally {
+  //     setIsLoadingFeedback(false);
+  //   }
+  // };
 
   // Handle form submission to send a chat message
   const handleSubmit = async (e: React.FormEvent) => {
@@ -359,7 +359,7 @@ function App() {
       setEmail("");
       setPassword("");
       fetchSampleQuestions();
-      fetchUserFeedback();
+      // fetchUserFeedback();
     } catch (err: any) {
       setError(err.message || "Failed to login. Please try again.");
       toast.error(err.message || "Failed to login", {
@@ -512,7 +512,7 @@ function App() {
         duration: 2000,
       });
 
-      fetchUserFeedback();
+      // fetchUserFeedback();
     } catch (err: any) {
       setError(err.message || "Failed to submit feedback. Please try again.");
       toast.error(err.message || "Failed to submit feedback", {
