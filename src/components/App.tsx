@@ -248,6 +248,8 @@ function App() {
 
       const data: ChatResponse = await response.json();
 
+      setInput("");
+
       setMessages((prev) => [
         ...prev,
         {
@@ -275,6 +277,8 @@ function App() {
           timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
         },
       ]);
+
+
     } catch (err) {
       console.error("Error:", err);
       setError("Failed to get response. Please try again.");
