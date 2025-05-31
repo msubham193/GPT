@@ -277,8 +277,6 @@ function App() {
           timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
         },
       ]);
-
-
     } catch (err) {
       console.error("Error:", err);
       setError("Failed to get response. Please try again.");
@@ -836,7 +834,7 @@ function App() {
               />
             </div>
             <h1 className="text-base sm:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent flex items-center gap-1 sm:gap-2">
-              CIME GPT
+              Campus AI
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
@@ -964,7 +962,7 @@ function App() {
                     />
                   </div>
                   <h2 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent px-2">
-                    Welcome to College of IT & Management Education GPT
+                    Welcome to Campus AI
                   </h2>
                 </div>
               )}

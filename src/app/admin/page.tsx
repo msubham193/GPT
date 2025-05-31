@@ -771,7 +771,7 @@ const AdminDashboard = () => {
               className="animate-pulse"
             />
             <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-              CIME GPT Admin
+              Campus AI Admin
             </h1>
           </div>
         </div>
