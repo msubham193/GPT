@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 // GET handler for fetching sample questions
 export async function GET() {
   try {
-    const response = await fetch("http://13.234.110.97:8000/sample-questions", {
+    const response = await fetch("http://13.204.45.108:8000/sample-questions", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
