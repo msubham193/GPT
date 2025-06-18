@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await fetch("http://13.234.110.97:8000/signup", {
+    const response = await fetch("http://13.204.45.108:8000/signup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
