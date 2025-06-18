@@ -10,7 +10,7 @@ export async function DELETE(
     console.log("Deleting document with ID:", id); // Debug log
 
     const response = await fetch(
-      `http://13.234.110.97:8000/sample-questions/${id}`,
+      `http://13.204.45.108:8000/sample-questions/${id}`,
       {
         method: "DELETE",
         headers: {
