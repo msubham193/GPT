@@ -10,7 +10,7 @@ export async function GET(
     console.log(id);
 
     const response = await fetch(
-      `http://13.234.110.97:8000/user-feedback/${encodeURIComponent(id)}`,
+      `http://13.204.45.108:8000/user-feedback/${encodeURIComponent(id)}`,
       {
         method: "GET",
         headers: {
