@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const { question } = await request.json();
 
-    const response = await fetch("http://13.234.110.97:8000/chat", {
+    const response = await fetch("http://13.204.45.108:8000/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
