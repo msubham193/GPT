@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const response = await fetch("http://13.234.110.97:8000/upload-pdf", {
+    const response = await fetch("http://13.204.45.108:8000/upload-pdf", {
       method: "POST",
       body: formData,
     });
